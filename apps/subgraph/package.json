@@ -1,0 +1,18 @@
+{
+    "name": "@blockchain-monorepo/subgraph",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "codegen": "graph codegen",
+        "build": "graph build",
+        "deploy": "graph deploy --node https://api.thegraph.com/deploy/ your-username/your-subgraph",
+        "create-local": "graph create --node http://localhost:8020/ your-username/your-subgraph",
+        "remove-local": "graph remove --node http://localhost:8020/ your-username/your-subgraph",
+        "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 your-username/your-subgraph",
+        "clean": "rm -rf build generated"
+    },
+    "dependencies": {
+        "@graphprotocol/graph-cli": "^0.68.0",
+        "@graphprotocol/graph-ts": "^0.32.0"
+    }
+}
