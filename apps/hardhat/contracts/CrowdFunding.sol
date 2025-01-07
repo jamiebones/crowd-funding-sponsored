@@ -134,8 +134,8 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         string calldata _contractDetailsId,
         string calldata _title,
         string calldata _category,
-        uint256 _duration,
         uint256 _amount,
+        uint256 _duration,
         address _factoryAddress,
         address _donationTokenAddress
     ) external initializer {
@@ -229,6 +229,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         // Cache state variables
         uint256 userDonation = donors[msg.sender];
         uint256 currentApprovedMilestones = approvedMilestone;
+        uint256 contractBal = address(this).balance;
 
         // Input validation
         if (userDonation == 0) {
@@ -255,25 +256,40 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         uint256 taxAmount = (withdrawalBase * taxOnWithdrawingDonation) / 100;
         uint256 userAmount = withdrawalBase - taxAmount;
 
+        // Verify contract has sufficient balance for both transfers
+        require(
+            contractBal >= (userAmount + taxAmount),
+            "Insufficient contract balance"
+        );
+        require(
+            factoryContractAddress != address(0),
+            "Invalid factory address"
+        );
+
         // Update state (before external calls)
         donors[msg.sender] = 0;
         numberOfDonors--;
         amountRecalledByDonor += withdrawalBase;
 
-        // Burn tokens before transfer
-        donationToken.burn(userDonation);
+        console.log("Tax amount", taxAmount);
 
-        // Transfer funds (external calls last)
+        // Burn tokens before transfer
+        donationToken.burnTokens(userDonation, msg.sender);
+
+        // Transfer user amount first
         (bool successUser, ) = payable(msg.sender).call{value: userAmount}("");
         if (!successUser) {
             revert WithdrawalFailed(userAmount);
         }
 
-        (bool successTax, ) = payable(factoryContractAddress).call{
-            value: taxAmount
-        }("");
-        if (!successTax) {
-            revert WithdrawalFailed(taxAmount);
+        // Only attempt tax transfer if there's a tax amount
+        if (taxAmount > 0) {
+            (bool successTax, ) = payable(factoryContractAddress).call{
+                value: taxAmount
+            }("");
+            if (!successTax) {
+                revert WithdrawalFailed(taxAmount);
+            }
         }
 
         emit DonationRetrievedByDonor(
@@ -350,7 +366,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         uint256 currentWithdrawals = numberOfWithdrawal;
         uint256 currentBalance = address(this).balance;
         uint256 currentMilestoneCount = milestoneCounter;
-		Milestone storage milestone = milestones[currentMilestoneCount];
+        Milestone storage milestone = milestones[currentMilestoneCount];
 
         // Early validation checks
         if (currentWithdrawals >= 3) {
@@ -378,7 +394,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         }
 
         // Handle subsequent milestone withdrawals
-        
+
         // Validate milestone voting period and status
         if (block.timestamp < milestone.votingPeriod) {
             revert MileStoneVotingPeriodHasNotElapsed();
@@ -434,7 +450,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
 
         if (currentWithdrawals == 1) {
             // Second withdrawal: 2/3 of remaining balance
-            withdrawalAmount = (currentBalance * 2) / 3;
+            withdrawalAmount = (currentBalance * 2 * baseNumber) / 3 / baseNumber;
         } else {
             // Final withdrawal: Remaining balance minus 1% tax
             taxAmount = currentBalance / 100; // 1% tax

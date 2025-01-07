@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox"
+import "@nomicfoundation/hardhat-toolbox-viem"
 import { HardhatUserConfig } from "hardhat/config"
 import "hardhat-deploy"
 import "@nomiclabs/hardhat-solhint"

@@ -18,8 +18,11 @@
         "lint:fix": "eslint --fix ."
     },
     "dependencies": {
+        "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
         "@openzeppelin/contracts": "5.0.2",
-        "save-dev": "0.0.1-security"
+        "network-helpers": "link:@nomicfoundation/hardhat-toolbox-viem/network-helpers",
+        "save-dev": "0.0.1-security",
+        "viem": "^2.22.3"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",

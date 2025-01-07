@@ -68,8 +68,8 @@ contract CrowdFundingFactory is Ownable {
             _contractDetailsId,
             _title,
             _category,
-            _duration,
             _goal,
+            _duration,
             address(this),
             address(donationToken)
         );
@@ -128,4 +128,6 @@ contract CrowdFundingFactory is Ownable {
     function getBalance() external view returns (uint256) {
         return address(this).balance;
     }
+
+    receive() external payable {}
 } 
