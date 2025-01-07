@@ -25,21 +25,20 @@ contract CrowdFundingFactory is Ownable {
     error FundingForNewContractTooSmall();
     error CreateFundingContractFailed();
     error WithdrawalFailed();
-    error InvalidFee();        
+    error InvalidFee();   
+    error NoFundsToWithdraw();
 
     // State variables
     address private immutable CROWDFUNDING_IMPLEMENTATION;
     address[] private deployedCrowdFundingContracts;
     address private crowdFundingToken;
-    address private governanceContract;
     uint256 private fundingFee = 0.000000001 ether;
-    IERC20 public donationToken;
+    CrowdFundingToken public donationToken;
 
 
-    constructor(address _implementation, address _governanceContract, address _donationTokenAddress) Ownable(_governanceContract) {
+    constructor(address _implementation, address _donationTokenAddress) Ownable(msg.sender) {
         require(_implementation != address(0), "Invalid implementation address");
         CROWDFUNDING_IMPLEMENTATION = _implementation;
-        governanceContract = _governanceContract;
         donationToken = CrowdFundingToken(_donationTokenAddress);
     }
 

@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CrowdFundingToken is ERC20, ERC20Burnable, Ownable {
     mapping(address => bool) public crowdfundingContracts;
     
-    constructor() ERC20("Donation Token", "DNTN") Ownable(msg.sender) {
+    constructor() ERC20("Donation Token", "DNTN") Ownable(msg.sender) {}
         // Initially owned by deployer
-    }
+
     
     function setFactoryAndTransferOwnership(address _factoryAddress) external onlyOwner {
         require(_factoryAddress != address(0), "Invalid factory address");
@@ -27,7 +27,7 @@ contract CrowdFundingToken is ERC20, ERC20Burnable, Ownable {
         _mint(to, amount);
     }
 
-    function burn(uint256 amount) external {
+    function burn(uint256 amount) public override {
         require(crowdfundingContracts[msg.sender], "Only crowdfunding contracts can burn");
         _burn(msg.sender, amount);
     }
