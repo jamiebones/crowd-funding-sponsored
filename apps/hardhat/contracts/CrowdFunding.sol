@@ -97,7 +97,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
     bool public campaignEnded;
     address payable private campaignOwner;
     address private factoryContractAddress;
-    string private category;
+    Category private category;
     string private title;
     string private contractDetailsId;
     uint256 private targetAmount;
@@ -122,6 +122,18 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         Declined
     }
 
+    enum Category {
+        TECHNOLOGY,
+        ARTS,
+        COMMUNITY,
+        EDUCATION,
+        ENVIRONMENT,
+        HEALTH,
+        SOCIAL,
+        CHARITY,
+        OTHER
+    }
+
     modifier onlycampaignOwner(address _address) {
         if (_address != campaignOwner) {
             revert YouAreNotTheOwnerOfTheCampaign();
@@ -133,7 +145,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
     function initialize(
         string calldata _contractDetailsId,
         string calldata _title,
-        string calldata _category,
+        Category _category,
         uint256 _amount,
         uint256 _duration,
         address _factoryAddress,
@@ -450,7 +462,10 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
 
         if (currentWithdrawals == 1) {
             // Second withdrawal: 2/3 of remaining balance
-            withdrawalAmount = (currentBalance * 2 * baseNumber) / 3 / baseNumber;
+            withdrawalAmount =
+                (currentBalance * 2 * baseNumber) /
+                3 /
+                baseNumber;
         } else {
             // Final withdrawal: Remaining balance minus 1% tax
             taxAmount = currentBalance / 100; // 1% tax

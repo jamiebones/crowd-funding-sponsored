@@ -38,8 +38,8 @@ describe("CrowdFunding", () => {
         const amountToDeposit = ethers.parseEther("0.000000001")
         const tx = await factoryContract.connect(await ethers.getSigner(signers.deployer)).createNewCrowdFundingContract(
             "testCID",
+            BigInt(2),
             "Test Campaign",
-            "Test Category",
             targetAmount,
             duration,
             { value: amountToDeposit }

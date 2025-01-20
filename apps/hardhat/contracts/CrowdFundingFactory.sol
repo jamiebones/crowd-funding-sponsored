@@ -14,7 +14,7 @@ contract CrowdFundingFactory is Ownable {
         address indexed contractAddress, 
         string contractDetailsId,
         string title,
-        string category,
+        uint8 category,
         uint256 duration,
         uint256 goal
     );
@@ -35,6 +35,18 @@ contract CrowdFundingFactory is Ownable {
     uint256 private fundingFee = 0.000000001 ether;
     CrowdFundingToken public donationToken;
 
+     enum Category {
+        TECHNOLOGY,
+        ARTS,
+        COMMUNITY,
+        EDUCATION,
+        ENVIRONMENT,
+        HEALTH,
+        SOCIAL,
+        CHARITY,
+        OTHER
+    }
+
 
     constructor(address _implementation, address _donationTokenAddress) Ownable(msg.sender) {
         require(_implementation != address(0), "Invalid implementation address");
@@ -44,14 +56,13 @@ contract CrowdFundingFactory is Ownable {
 
     function createNewCrowdFundingContract(
         string memory _contractDetailsId,
-        string memory _category,
+        Category _category,
         string memory _title,
         uint256 _goal,
         uint256 _duration
     ) external payable returns (address) {
         // Add input validation
         require(bytes(_contractDetailsId).length > 0, "Empty contract details ID");
-        require(bytes(_category).length > 0, "Empty category");
         require(bytes(_title).length > 0, "Empty title");
         require(_goal > 0, "Goal must be greater than 0");
         require(_duration > 0, "Duration must be greater than 0");
@@ -64,10 +75,10 @@ contract CrowdFundingFactory is Ownable {
         
         // Move initialization parameters to a separate variable for better readability
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(string,string,string,uint256,uint256,address,address)",
+            "initialize(string,string,uint8,uint256,uint256,address,address)",
             _contractDetailsId,
             _title,
-            _category,
+            uint8(_category),
             _goal,
             _duration,
             address(this),
@@ -88,7 +99,7 @@ contract CrowdFundingFactory is Ownable {
             clone,
             _contractDetailsId,
             _title,
-            _category,
+            uint8(_category),
             _duration,
             _goal
         );

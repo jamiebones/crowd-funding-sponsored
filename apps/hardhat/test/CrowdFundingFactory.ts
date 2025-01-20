@@ -73,7 +73,7 @@ describe("CrowdFundingFactory", () => {
             await expect(
                 factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                     "testCID",
-                    "Test Category",
+                    BigInt(2),
                     "Test Campaign",
                     goal,
                     duration,
@@ -93,7 +93,7 @@ describe("CrowdFundingFactory", () => {
             await expect(
                 factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                     "testCID",
-                    "Test Category",
+                    BigInt(2),
                     "Test Campaign",
                     ethers.parseEther("10"),
                     30 * 24 * 60 * 60,
@@ -110,7 +110,7 @@ describe("CrowdFundingFactory", () => {
             await expect(
                 factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                     "",
-                    "Test Category",
+                    BigInt(2),
                     "Test Campaign",
                     ethers.parseEther("10"),
                     30 * 24 * 60 * 60,
@@ -122,7 +122,7 @@ describe("CrowdFundingFactory", () => {
             await expect(
                 factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                     "testCID",
-                    "Test Category",
+                    BigInt(2),
                     "Test Campaign",
                     0,
                     30 * 24 * 60 * 60,
@@ -173,7 +173,7 @@ describe("CrowdFundingFactory", () => {
             // Create a campaign to generate fees
             await factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                 "testCID",
-                "Test Category",
+                BigInt(2),
                 "Test Campaign",
                 ethers.parseEther("10"),
                 30 * 24 * 60 * 60,
@@ -221,7 +221,7 @@ describe("CrowdFundingFactory", () => {
             for (let i = 0; i < 3; i++) {
                 await factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                     `testCID${i}`,
-                    "Test Category",
+                    BigInt(2),
                     "Test Campaign",
                     ethers.parseEther("10"),
                     30 * 24 * 60 * 60,
@@ -239,7 +239,7 @@ describe("CrowdFundingFactory", () => {
 
             await factoryContract.connect(accounts[1]).createNewCrowdFundingContract(
                 "testCID",
-                "Test Category",
+                BigInt(2),
                 "Test Campaign",
                 ethers.parseEther("10"),
                 30 * 24 * 60 * 60,

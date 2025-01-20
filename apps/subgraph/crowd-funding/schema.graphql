@@ -1,21 +1,118 @@
-type NewCrowdFundingContractCreated @entity(immutable: true) {
-  id: Bytes!
-  owner: Bytes! # address
-  amount: BigInt! # uint256
-  cloneAddress: Bytes! # address
-  fundingDetailsId: String! # string
-  duration: BigInt! # uint256
-  category: String! # string
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+
+
+enum MilestoneStatus {
+  Default
+  Pending
+  Approved
+  Declined
 }
 
-type OwnershipTransferred @entity(immutable: true) {
+
+type _Schema_
+  @fulltext(
+    name: "campaignSearch"
+    language: en
+    algorithm: rank
+    include: [
+      {
+        entity: "CampaignContent"
+        fields: [{ name: "details" }, { name: "title" }]
+      }
+    ]
+  )
+
+  type CampaignCreator @entity {
+  id: ID!
+  createdCampaigns: [Campaign!] @derivedFrom(field: "owner")
+  fundingGiven: BigInt
+  fundingWithdrawn: BigInt
+  totalCampaigns: BigInt
+}
+
+type Campaign @entity {
   id: Bytes!
-  previousOwner: Bytes! # address
-  newOwner: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+  campaignCID: String!
+  category: Int!
+  contractAddress: ID!
+  active: Boolean!
+  projectDuration: BigInt
+  milestone: [Milestone!] @derivedFrom(field: "campaign")
+  currentMilestone: Bytes
+  dateCreated: BigInt!
+  backers: BigInt!
+  campaignRunning: Boolean!
+  owner: CampaignCreator!
+  amountSought: BigInt!
+  amountRaised: BigInt
+  dateCreated: BigInt!
+  endDate: BigInt
+  donors: [Donation!] @derivedFrom(field: "donatingTo")
+  donorsRecall: [DonationWithdrawal!] @derivedFrom(field: "withdrawingFrom")
+  content: CampaignContent @derivedFrom(field: "campaign")
+}
+
+
+type Milestone @entity {
+  id: Bytes!
+  milestoneCID: String!
+  details: String
+  campaign: Campaign!
+  status: MilestoneStatus!
+  periodToVote: BigInt!
+  dateCreated: BigInt!
+  content: MilestoneContent @derivedFrom(field: "milestone")
+}
+
+type Donor @entity {
+  id: ID!
+  address: Bytes!
+  donations: [Donation!] @derivedFrom(field: "donor")
+  withdrawals: [DonorWithdrawal!] @derivedFrom(field: "donor")
+  totalDonated: BigInt!
+  totalWithdrawn: BigInt!
+  campaignsSupported: [Campaign!] @derivedFrom(field: "donors")
+}
+
+type DonorWithdrawal @entity {
+  id: ID!
+  donor: Donor!
+  withdrawingFrom: Campaign!
+  amount: BigInt!
+  timestamp: BigInt!
+}
+
+type Donation @entity {
+  id: ID!
+  donor: Donor!
+  donatingTo: Campaign!
+  amount: BigInt!
+  timestamp: BigInt!
+}
+
+
+type CampaignContent @entity(immutable: true) {
+  id: Bytes!
+  campaign: Campaign!
+  details: String
+  title: String
+  media: [String!]
+  hash: String
+}
+
+type MilestoneContent @entity(immutable: true) {
+  id: Bytes!
+  milestone: Milestone!
+  details: String
+  title: String
+  media: [String!]
+  hash: String
+}
+
+type Statistic @entity {
+    id: Bytes!
+    totalContracts: BigInt!
+    totalFundingRequest: BigInt!
+    totalBackers: BigInt!
+    totalWithdrawals: BigInt!
+    totalFundingGiven: BigInt!
 }
