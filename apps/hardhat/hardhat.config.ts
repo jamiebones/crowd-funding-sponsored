@@ -12,8 +12,14 @@ import "dotenv/config"
 const RSK_MAINNET_RPC_URL = process.env.RSK_MAINNET_RPC_URL
 const RSK_TESTNET_RPC_URL = process.env.RSK_TESTNET_RPC_URL
 const PRIVATE_KEY = process.env.PRIVATE_KEY
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "0x"
 
 const GANACHE_ACCOUNT_PRIVATE_KEY = "0x8a2ad2e6cac368f838fe2dcbd45e076bf96d9c938a2bd708d7ae662a33b6ea53"
+
+console.log("ETHERSCAN_API_KEY", ETHERSCAN_API_KEY)
+if (ETHERSCAN_API_KEY === "0x") {
+	throw new Error("ETHERSCAN_API_KEY is not configured.")
+}
 
 // Ensure environment variables are configured
 if (!RSK_MAINNET_RPC_URL) {
@@ -61,13 +67,17 @@ const config: HardhatUserConfig = {
 			chainId: 97,
 			gasPrice: 20000000000,
 			accounts: [PRIVATE_KEY]
+		},
 	},
+	sourcify: {
+		enabled: true
 	},
 	etherscan: {
 		apiKey: {
 			// Is not required by blockscout. Can be any non-empty string
 			rsktestnet: "your API key",
 			rskmainnet: "your API key",
+			bscTestnet: ETHERSCAN_API_KEY,
 		},
 		customChains: [
 			{

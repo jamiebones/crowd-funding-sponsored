@@ -1,29 +1,100 @@
 specVersion: 1.0.0
 indexerHints:
   prune: auto
+features:
+  - fullTextSearch
 schema:
   file: ./schema.graphql
 dataSources:
-  - kind: ethereum
-    name: Contract
-    network: bsc
+  - kind: ethereum/contract
+    name: CrowdFundingFactory
+    network: chapel
+    #network: mainnet //for local testing
     source:
-      address: "0x9e10b50833504655b4671F21900602E3C569C83C"
-      abi: Contract
-      startBlock: 0
+      address: "0x0Ac6Bb3095c62706D8EDd0B9185bCCFB16cDE117"
+      abi: CrowdFundingFactory
+      startBlock: 47606827 
+      #reorgThreshold: 500
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - NewCrowdFundingContractCreated
-        - OwnershipTransferred
+        - CampaignCreator
+        - Campaign
       abis:
-        - name: Contract
-          file: ./abis/Contract.json
+        - name: CrowdFundingFactory
+          file: ./abis/FactoryContract.json
       eventHandlers:
-        - event: NewCrowdFundingContractCreated(indexed address,uint256,address,string,uint256,string)
+        - event: NewCrowdFundingContractCreated(indexed address,indexed address,string,string,uint8,uint256,uint256)
           handler: handleNewCrowdFundingContractCreated
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
+        - event: FundsWithdrawn(indexed address,uint256)
+          handler: handleFundsWithdrawn
       file: ./src/contract.ts
+templates:
+  - kind: ethereum/contract
+    name: Campaign
+    network: chapel
+    #network: mainnet
+    source:
+      abi: CrowdFundingContract
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Milestone
+        - Donation
+        - Statistic
+        - Donor
+        - DonorWithdrawal
+        - MilestoneContent
+      abis:
+        - name: CrowdFundingContract
+          file: ./abis/CrowdFundingContract.json
+      eventHandlers:
+        - event: MilestoneCreated(indexed address,uint256,uint256,string)
+          handler: handleMilestoneCreated
+        - event: DonationRetrievedByDonor(indexed address,indexed address,uint256,uint256,uint256)
+          handler: handleDonationRetrievedByDonor
+        - event: UserDonatedToProject(indexed address,uint256,indexed address,uint256)
+          handler: handleUserDonatedToProject
+        - event: UserVotedOnMileStone(indexed address,indexed address,bool,uint256)
+          handler: handleUserVotedOnMileStone
+        - event: MileStoneStatusUpdated(indexed address,uint8,string,uint256)
+          handler: handleMileStoneStatusUpdated
+        - event: CampaignEnded(indexed address,uint256) 
+          handler: handleCampaignEnded
+        - event: MilestoneWithdrawal(indexed address,uint256,uint256)
+          handler: handleMilestonesWithdrawal
+        - event: VotedOnMilestone(indexed address,indexed address,bool,uint256,uint256,string)
+          handler: handleVotedOnMilestone 
+      file: ./src/contract.ts
+  - kind: file/arweave
+    name: ArweaveContentCampaign
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - CampaignContent
+      abis:
+        - name: CrowdFundingContract
+          file: ./abis/CrowdFundingContract.json
+      handler: handleCampaignContent
+      file: ./src/contract.ts
+  - kind: file/arweave
+    name: ArweaveContentMilestone
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MilestoneContent
+      abis:
+        - name: CrowdFundingContract
+          file: ./abis/CrowdFundingContract.json
+      handler: handleMilestoneContent
+      file: ./src/contract.ts
+
+

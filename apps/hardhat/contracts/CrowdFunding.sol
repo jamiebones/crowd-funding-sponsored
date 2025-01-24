@@ -90,7 +90,8 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         address indexed project,
         bool support,
         uint256 amount,
-        uint256 timestamp
+        uint256 timestamp,
+        string milestoneCID
     );
 
     // State variables
@@ -365,7 +366,8 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
             address(this),
             support,
             weight,
-            block.timestamp
+            block.timestamp,
+            currentMilestone.milestoneCID
         );
     }
 

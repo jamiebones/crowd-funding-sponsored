@@ -1,9 +1,7 @@
-
-
 enum MilestoneStatus {
-  Default
-  Pending
-  Approved
+  Default,
+  Pending,
+  Approved,
   Declined
 }
 
@@ -37,30 +35,30 @@ type Campaign @entity {
   active: Boolean!
   projectDuration: BigInt
   milestone: [Milestone!] @derivedFrom(field: "campaign")
-  currentMilestone: Bytes
+  currentMilestone: ID
   dateCreated: BigInt!
   backers: BigInt!
   campaignRunning: Boolean!
   owner: CampaignCreator!
   amountSought: BigInt!
   amountRaised: BigInt
-  dateCreated: BigInt!
   endDate: BigInt
-  donors: [Donation!] @derivedFrom(field: "donatingTo")
-  donorsRecall: [DonationWithdrawal!] @derivedFrom(field: "withdrawingFrom")
+  donations: [Donation!] @derivedFrom(field: "donatingTo")
+  donorsRecall: [DonorWithdrawal!] @derivedFrom(field: "withdrawingFrom")
   content: CampaignContent @derivedFrom(field: "campaign")
 }
 
 
 type Milestone @entity {
-  id: Bytes!
+  id: ID!
   milestoneCID: String!
   details: String
   campaign: Campaign!
-  status: MilestoneStatus!
+  status: Int!
   periodToVote: BigInt!
   dateCreated: BigInt!
   content: MilestoneContent @derivedFrom(field: "milestone")
+  votes: [Vote!] @derivedFrom(field: "milestone")
 }
 
 type Donor @entity {
@@ -70,11 +68,10 @@ type Donor @entity {
   withdrawals: [DonorWithdrawal!] @derivedFrom(field: "donor")
   totalDonated: BigInt!
   totalWithdrawn: BigInt!
-  campaignsSupported: [Campaign!] @derivedFrom(field: "donors")
 }
 
 type DonorWithdrawal @entity {
-  id: ID!
+  id: Bytes!
   donor: Donor!
   withdrawingFrom: Campaign!
   amount: BigInt!
@@ -82,7 +79,7 @@ type DonorWithdrawal @entity {
 }
 
 type Donation @entity {
-  id: ID!
+  id: Bytes!
   donor: Donor!
   donatingTo: Campaign!
   amount: BigInt!
@@ -95,6 +92,7 @@ type CampaignContent @entity(immutable: true) {
   campaign: Campaign!
   details: String
   title: String
+  category: String
   media: [String!]
   hash: String
 }
@@ -116,3 +114,15 @@ type Statistic @entity {
     totalWithdrawals: BigInt!
     totalFundingGiven: BigInt!
 }
+
+type Vote @entity {
+    id: Bytes!
+    voter: ID!
+    project: ID!
+    weight: BigInt!
+    support: Boolean!
+    timestamp: BigInt!
+    milestoneCID: String!
+    milestone: Milestone!
+}
+
