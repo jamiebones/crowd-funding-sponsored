@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
 
-export default nextConfig;
+const nextConfig = {
+  webpack: (config: NextConfig) => {
+    config.externals.push("pino-pretty", "lokijs", "encoding");
+    return config;
+  },
+};
