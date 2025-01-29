@@ -387,18 +387,27 @@ export function handleCampaignContent(content: Bytes): void {
     let value = json.fromBytes(content).toObject();
     let title = value.get("title");
     let media = value.get("media");
-    let details = value.get("details");
+    let description = value.get("description");
     let category = value.get("category");
+    let amount = value.get("amount");
+    let date = value.get("date");
+
     campaignContent.campaign = id;
     if (title) {
         campaignContent.title = title.toString();
     }
 
-    if (details) {
-        campaignContent.details = details.toString();
+    if (description) {
+        campaignContent.details = description.toString();
     }
     if (category) {
         campaignContent.category = category.toString();
+    }
+    if (amount) {
+        campaignContent.amount = amount.toString();
+    }
+    if (date) {
+        campaignContent.date = date.toString();
     }
     let mediaArray: string[] = [];
     if (media && media.toArray().length > 0) {

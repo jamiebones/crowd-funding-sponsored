@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import WagmiProviderComp from "../lib/wagmi-provider";
 import { Inter } from "next/font/google";
-import { headers } from "next/headers";
-import { cookieToInitialState } from "wagmi";
-import { config } from "../lib/config";
-
+import { Bounce, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import AppKitProvider from "../lib/rainbow-kit-provider";
+import Navbar from "../components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
+import { usePathname } from 'next/navigation';
 
 import "./globals.css";
 
@@ -30,15 +30,31 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialState = cookieToInitialState(config, (await headers()).get("cookie"));
+ 
  
   return (
     <html lang="en">
       <body className={inter.className}>
-        <WagmiProviderComp initialState={initialState}>
+      <AppKitProvider>
+        <Navbar />
           {children}
-        </WagmiProviderComp>
+          <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+                transition={Bounce}
+              />
+        </AppKitProvider>
+       
       </body>
     </html>
   );
 }
+

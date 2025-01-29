@@ -93,6 +93,8 @@ type CampaignContent @entity(immutable: true) {
   details: String
   title: String
   category: String
+  amount: String
+  date: String
   media: [String!]
   hash: String
 }
