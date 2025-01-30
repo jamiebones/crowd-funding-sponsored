@@ -1,6 +1,6 @@
 import { BigInt, Bytes, dataSource, DataSourceContext, DataSourceTemplate, json, log } from "@graphprotocol/graph-ts";
 import {
-    NewCrowdFundingContractCreated as NewCrowdFundingContractCreatedEvent, 
+    NewCrowdFundingContractCreated as NewCrowdFundingContractCreatedEvent,
     FundingFeeUpdated as FundingFeeUpdatedEvent
 } from "../generated/CrowdFundingFactory/CrowdFundingFactory";
 
@@ -20,7 +20,7 @@ import {
     MilestoneWithdrawal as MilestoneWithdrawalEvent, UserDonatedToProject as UserDonatedToProjectEvent,
     DonationRetrievedByDonor as DonationRetrievedByDonorEvent,
     CampaignEnded as CampaignEndedEvent, MileStoneStatusUpdated as MilestoneStatusChangedEvent,
-    VotedOnMilestone as VotedOnMilestoneEvent, 
+    VotedOnMilestone as VotedOnMilestoneEvent,
 } from "../generated/templates/Campaign/CrowdFundingContract";
 
 
@@ -375,52 +375,75 @@ export function handleCampaignEnded(event: CampaignEndedEvent): void {
     }
 }
 
+// description: details.description,
+// category: details.category,
+// amount: details.amount || "",
+// date: details.date || "",
+// media: results.transactionIds,
+// title: details.title
 
 
 export function handleCampaignContent(content: Bytes): void {
+    log.info("1. Function started", ["handleCampaignContent"])
     log.info("handlingcampaigncontent", ["campaign content started"])
     let hash = dataSource.stringParam();
+    log.info("2. Got hash", [hash])
+
     let context = dataSource.context();
+    log.info("3. Got context", ["context retrieved"])
+
     let id = context.getBytes(CAMPAIGN_ID_KEY);
+    log.info("4. Got campaign ID", [id.toHexString()])
+
     let campaignContent = new CampaignContent(id);
+    log.info("5. Created new CampaignContent", [id.toHexString()])
 
     let value = json.fromBytes(content).toObject();
+    log.info("6. Parsed content to JSON object", ["success"])
+
     let title = value.get("title");
+    log.info("7. Got title", [title ? title.toString() : "null"])
+
     let media = value.get("media");
+    log.info("8. Got media", [media ? "media found" : "null"])
+
     let description = value.get("description");
-    let category = value.get("category");
-    let amount = value.get("amount");
-    let date = value.get("date");
+    log.info("9. Got description", [description ? "description found" : "null"])
 
     campaignContent.campaign = id;
+    log.info("13. Set campaign ID", [id.toHexString()])
+
     if (title) {
         campaignContent.title = title.toString();
+        log.info("14. Set title", [title.toString()])
     }
 
     if (description) {
         campaignContent.details = description.toString();
+        log.info("15. Set description", [description.toString()])
     }
-    if (category) {
-        campaignContent.category = category.toString();
-    }
-    if (amount) {
-        campaignContent.amount = amount.toString();
-    }
-    if (date) {
-        campaignContent.date = date.toString();
-    }
+
     let mediaArray: string[] = [];
+    log.info("19. Created media array", ["initialized"])
+
     if (media && media.toArray().length > 0) {
         for (let i = 0; i < media.toArray().length; i++) {
             const url = media.toArray()[i].toString();
             mediaArray.push(url)
+            log.info("20. Added media URL", [url])
         }
         campaignContent.media = mediaArray;
+        log.info("21. Set media array", [mediaArray.length.toString()])
     }
 
     campaignContent.hash = hash;
+    log.info("22. Set hash", [hash])
+
     campaignContent.save();
+    log.info("23. Saved campaign content", ["success"])
+
     log.info("handlingcampaigncontent", ["campaign content ended"])
+    log.info("24. Function completed", ["handleCampaignContent"])
 }
 
 export function handleMilestoneContent(content: Bytes): void {
