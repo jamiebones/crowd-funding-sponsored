@@ -173,7 +173,7 @@ export default function StartProject() {
             BigInt(endTimestamp)],                                              
         value: ethers.parseEther(fees.toString()),
       });
-
+ 
     } catch (error) {
       console.error("Error creating project:", error);
       toast.error(error instanceof Error ? error.message : 'Error creating project', {
