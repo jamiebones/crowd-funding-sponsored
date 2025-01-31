@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import { Bounce, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AppKitProvider from "../lib/rainbow-kit-provider";
-import Navbar from "../components/Navbar";
+import Navbar from "./components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 import { usePathname } from 'next/navigation';
 

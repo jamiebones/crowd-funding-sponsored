@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { categories } from "../../app/constant/categories";
+import { categories } from "../../constant/categories";
 
 interface Props {
   projectData: {

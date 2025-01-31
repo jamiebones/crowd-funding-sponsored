@@ -2,11 +2,11 @@
 
 import useEmblaCarousel from 'embla-carousel-react';
 import { useCallback } from 'react';
-import FeaturedProject from "../components/home/FeaturedProject";
-import RecommendedProjects from "../components/home/RecommendedProjects";
-import ProjectCarousel from "../components/home/ProjectCarousel";
-import Footer from "../components/Footer";
-import ConnectButton from "../components/ConnectButton";
+import FeaturedProject from "./components/home/FeaturedProject";
+import RecommendedProjects from "./components/home/RecommendedProjects";
+import ProjectCarousel from "./components/home/ProjectCarousel";
+import Footer from "./components/Footer";
+import ConnectButton from "./components/ConnectButton";
 export default function Home() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: 'start',

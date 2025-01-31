@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import CategoryAndFundingStep from '../../components/start-project/CategoryAndFundingStep';
-import ProjectDetailsStep from '../../components/start-project/ProjectDetailsStep';
-import ProjectSummaryStep from '../../components/start-project/ProjectSummaryStep';
+import CategoryAndFundingStep from '../components/start-project/CategoryAndFundingStep';
+import ProjectDetailsStep from '../components/start-project/ProjectDetailsStep';
+import ProjectSummaryStep from '../components/start-project/ProjectSummaryStep';
 import { toast } from "react-toastify";
 import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ import { ethers } from "ethers";
 import CrowdFundingFactoryABI from "../../../abis/FactoryContract.json";
 const factoryContractAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS || "0x";
 import { categories } from "../constant/categories";
-import Spinner from '../../components/common/Spinner';
+import Spinner from '../components/common/Spinner';
 import axios from 'axios';
 
 
