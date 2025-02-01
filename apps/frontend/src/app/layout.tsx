@@ -6,7 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 import AppKitProvider from "../lib/rainbow-kit-provider";
 import Navbar from "./components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
-import { usePathname } from 'next/navigation';
+import { DonationProvider } from "../context/donationContext";
 
 import "./globals.css";
 
@@ -35,6 +35,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+      <DonationProvider>
       <AppKitProvider>
         <Navbar />
           {children}
@@ -52,7 +53,7 @@ export default async function RootLayout({
                 transition={Bounce}
               />
         </AppKitProvider>
-       
+        </DonationProvider>
       </body>
     </html>
   );

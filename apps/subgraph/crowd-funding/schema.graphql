@@ -63,7 +63,6 @@ type Milestone @entity {
 
 type Donor @entity {
   id: ID!
-  address: Bytes!
   donations: [Donation!] @derivedFrom(field: "donor")
   withdrawals: [DonorWithdrawal!] @derivedFrom(field: "donor")
   totalDonated: BigInt!

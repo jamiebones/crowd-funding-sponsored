@@ -8,19 +8,20 @@ import {  useAccount } from "wagmi";
 import { ethers } from 'ethers';
 import { toast } from 'react-toastify';
 
+
+
 interface UserCampaignsData {
   campaignCreator: {
     createdCampaigns: Campaign[];
     fundingGiven: string;
     fundingWithdrawn: string;
   }
- 
 }
 
 export default function UserProjects() {
   
   const { address } = useAccount();
-
+ 
   const { data: campaigns, error, isLoading } = useQuery<UserCampaignsData>({
     queryKey: ["userProjects", address?.toLowerCase().toString()],
     queryFn: ({ queryKey }): any => {
@@ -29,6 +30,10 @@ export default function UserProjects() {
     },
     enabled: !!address,
   });
+
+  console.log("campaigns", campaigns);
+
+ 
 
   if (error) {
     console.error("Error fetching your campaigns:", error);

@@ -3,7 +3,8 @@
 import { formatDistance, subDays } from 'date-fns';
 import { ethers } from 'ethers';
 import Campaign from "../../interface/Campaign";
-import { isPdf, formatRelativeTime } from "@/lib/utility";
+import { isPdf, getCampaignCategories } from "@/lib/utility";
+import { useRouter } from "next/navigation";
 
 
 interface CampaignCardProps {
@@ -14,10 +15,17 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
   const progress = (Number(campaign.amountRaised) / Number(campaign.amountSought)) * 100;
   console.log("campaign.endDate", campaign.projectDuration);
   const timeLeft = formatDistance(subDays(new Date(+campaign.projectDuration * 1000), 1), new Date(), { addSuffix: true });
+  const router = useRouter();
+
+
+ const navigateToDetails = (projectID: string) => {
+    router.push(`/user/projects/${projectID}`);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-      <div className="relative h-48 overflow-x-auto flex">
+      <div className="relative h-48 overflow-x-auto flex" onClick={() => navigateToDetails(campaign.id)} 
+      style={{ cursor: 'pointer' }}>
         {campaign.content.media.map((mediaItem, index) => (
           <div key={index} className="h-48 min-w-full flex-shrink-0">
             {isPdf(mediaItem) ? (
@@ -58,7 +66,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         
         <div className="flex justify-between text-sm mb-4">
           <span className="text-gray-600">
-            {ethers.formatEther(campaign.amountRaised)} ETH raised
+            {ethers.formatEther(campaign.amountRaised)} BNB raised
           </span>
           <span className="text-gray-600">
             {Math.round(progress)}%
@@ -73,6 +81,12 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             campaign.campaignRunning ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
           }`}>
             {campaign.campaignRunning ? 'Active' : 'Ended'}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+            {getCampaignCategories(campaign.category)}
           </span>
         </div>
       </div>

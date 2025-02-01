@@ -26,7 +26,8 @@ import {
 
 import {
     Campaign, CampaignContent, CampaignCreator, Milestone, DonorWithdrawal,
-    Donation, MilestoneContent, Statistic, Vote
+    Donation, MilestoneContent, Statistic, Vote,
+    Donor
 } from "../generated/schema";
 
 const CAMPAIGN_ID_KEY = "campaignID";
@@ -119,6 +120,7 @@ export function handleUserDonatedToProject(event: UserDonatedToProjectEvent): vo
 
     const stats = Statistic.load(STATS_ID);
     const campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()));
+    
     if (campaign) {
         let donation = new Donation(Bytes.fromUTF8(event.params.donor.toHexString()
             + "_" + event.params.date.toString() + "_" + event.params.project.toHexString()))
@@ -145,6 +147,7 @@ export function handleUserDonatedToProject(event: UserDonatedToProjectEvent): vo
         ]);
 
         const campaignCreator = CampaignCreator.load(campaign.owner);
+        const donor = Donor.load(event.params.donor.toHexString());
         if (campaignCreator) {
             campaignCreator.fundingGiven = campaignCreator.fundingGiven!.plus(event.params.amount);
             campaignCreator.save();
@@ -153,6 +156,16 @@ export function handleUserDonatedToProject(event: UserDonatedToProjectEvent): vo
                 'Address: ' + campaignCreator.id,
                 'Funding Given: ' + campaignCreator.fundingGiven!.toString()
             ]);
+        }
+
+        if (donor) {
+            donor.totalDonated = donor.totalDonated.plus(event.params.amount);
+            donor.save();
+        } else {
+            const newDonor = new Donor(event.params.donor.toHexString());
+            newDonor.totalDonated = event.params.amount;
+            newDonor.totalWithdrawn = BigInt.fromI32(0);
+            newDonor.save();
         }
 
         if (stats) {
@@ -230,6 +243,13 @@ export function handleDonationRetrievedByDonor(event: DonationRetrievedByDonorEv
         donationWithdrawal.withdrawingFrom = campaign.id;
         donationWithdrawal.timestamp = event.params.date;
         donationWithdrawal.save();
+
+        const donor = Donor.load(event.params.donor.toHexString());
+        if (donor) {
+            donor.totalDonated = donor.totalDonated!.minus(event.params.amountDonated);
+            donor.totalWithdrawn = donor.totalWithdrawn.plus(event.params.amountReceived);
+            donor.save();
+        }
     }
     if (stats) {
         stats.totalBackers = stats.totalBackers.minus(BigInt.fromI32(1));
@@ -456,7 +476,7 @@ export function handleMilestoneContent(content: Bytes): void {
     let value = json.fromBytes(content).toObject();
     let title = value.get("title");
     let media = value.get("media");
-    let details = value.get("details");
+    let details = value.get("description");
 
     if (title) {
         milestoneContent.title = title.toString();
