@@ -236,17 +236,17 @@ export function handleDonationRetrievedByDonor(event: DonationRetrievedByDonorEv
             campaignCreator.save();
         }
         campaign.amountRaised = campaign.amountRaised!.minus(event.params.amountDonated);
+        campaign.backers = campaign.backers.minus(BigInt.fromI32(1));
         campaign.save();
         donationWithdrawal.amount = event.params.amountReceived;
         donationWithdrawal.donor = event.params.donor.toHexString();
-        campaign.backers = campaign.backers.minus(BigInt.fromI32(1));
         donationWithdrawal.withdrawingFrom = campaign.id;
         donationWithdrawal.timestamp = event.params.date;
         donationWithdrawal.save();
 
         const donor = Donor.load(event.params.donor.toHexString());
         if (donor) {
-            donor.totalDonated = donor.totalDonated!.minus(event.params.amountDonated);
+            donor.totalDonated = donor.totalDonated.minus(event.params.amountDonated);
             donor.totalWithdrawn = donor.totalWithdrawn.plus(event.params.amountReceived);
             donor.save();
         }

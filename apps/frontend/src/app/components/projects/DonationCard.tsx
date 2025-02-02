@@ -10,7 +10,6 @@ export const DonationCard = ({ onDonate, isPending }: { onDonate: (amount: numbe
   
   
   const handleDonate = () => {
-    alert("Donating...");
     const amount = selectedAmount || parseFloat(customAmount);
     if (amount > 0) {
       onDonate(amount);
@@ -69,7 +68,6 @@ export const DonationCard = ({ onDonate, isPending }: { onDonate: (amount: numbe
       </div>
 
       {/* Donate button */}
-      <p>{isPending ? 'Donating...' : 'Donate Now'}</p>
       <button
         onClick={()=>handleDonate()}
         disabled={isPending}

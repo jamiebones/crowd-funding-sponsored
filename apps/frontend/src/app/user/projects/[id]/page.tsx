@@ -9,7 +9,7 @@ import Campaign from '@/app/interface/Campaign';
 import { Loading } from '@/app/components/common/Loading';
 import { ethers } from 'ethers';
 import { useWriteContract, useAccount } from "wagmi";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { CreateMilestoneForm } from '@/app/components/projects/CreateMilestoneForm';
 import { Plus } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -22,8 +22,8 @@ interface UserCampaignsData {
       campaign: Campaign;
     
   }
-export default function CampaignDetails({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function CampaignDetails({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { address } = useAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -167,8 +167,9 @@ export default function CampaignDetails({ params }: { params: { id: string } }) 
 
         {/* Donors Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <DonorsSection donors={campaign?.donors || []} 
-           contractAddress={campaign?.contractAddress as string} id={id} />
+          <DonorsSection donations={campaign?.donations || []} 
+           contractAddress={campaign?.contractAddress as string} id={id} 
+           withdrawals={campaign?.donorsRecall || []} />
           <WithdrawalsSection withdrawals={campaign?.donorsRecall || []} />
         </div>
 

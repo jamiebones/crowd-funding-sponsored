@@ -1,7 +1,6 @@
 "use client";
 
 import client from '../graphQLClient';
-import { gql } from "graphql-request";
 
 export const getCampaignDetails = async (campaignID: string) => {
   const query = `
@@ -54,8 +53,6 @@ export const getCampaignDetails = async (campaignID: string) => {
       timestamp
       donor {
         id
-        totalDonated
-        totalWithdrawn
       }
     }
     donations {
@@ -64,8 +61,6 @@ export const getCampaignDetails = async (campaignID: string) => {
       id
       donor {
         id
-        totalDonated
-        totalWithdrawn
       }
     }
   }
