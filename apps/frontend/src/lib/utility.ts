@@ -39,7 +39,6 @@ const filterDonations = (donations: any[], withdrawals: any[]) => {
 
   // Filter donations based on withdrawal timestamps
   return donations.filter(donation => {
-    debugger;
     const donorId = donation.donor.id.toLowerCase();
     const donationTime = donation.timestamp;
 

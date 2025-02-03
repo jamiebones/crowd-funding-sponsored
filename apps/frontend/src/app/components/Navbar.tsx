@@ -27,14 +27,14 @@ const Navbar = () => {
               Home
             </Link>
             <Link
-              href="/dashboard"
+              href="/user/projects"
               className={`px-3 py-2 rounded-md text-sm font-medium ${
-                pathname === "/dashboard"
+                pathname === "/user/projects"
                   ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-gray-700 hover:text-white"
               }`}
             >
-              Create
+              My Projects
             </Link>
 
             <Link
@@ -49,9 +49,9 @@ const Navbar = () => {
             </Link>
 
             <Link
-              href="/donations"
+              href="/user/donations"
               className={`px-3 py-2 rounded-md text-sm font-medium ${
-                pathname === "/donations"
+                pathname === "/user/donations"
                   ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-gray-700 hover:text-white"
               }`}
@@ -59,16 +59,6 @@ const Navbar = () => {
               Donations
             </Link>
 
-            <Link
-              href="/user/projects"
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                pathname === "/user/projects"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-700 hover:text-white"
-              }`}
-            >
-              Projects
-            </Link>
 
             <Link
               href="/metrics"

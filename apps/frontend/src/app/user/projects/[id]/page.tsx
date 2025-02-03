@@ -21,7 +21,7 @@ import CrowdFundingFactoryABI from "../../../../../abis/CrowdFundingContract.jso
 interface UserCampaignsData {
       campaign: Campaign;
     
-  }
+}
 export default function CampaignDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { address } = useAccount();
