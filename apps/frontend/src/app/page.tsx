@@ -7,12 +7,39 @@ import RecommendedProjects from "./components/home/RecommendedProjects";
 import ProjectCarousel from "./components/home/ProjectCarousel";
 import Footer from "./components/Footer";
 import ConnectButton from "./components/ConnectButton";
+import { useQuery } from '@tanstack/react-query';
+import { getStats } from '@/lib/queries/getStats';
+import Link from 'next/link';
+
+import { categories } from "./constant/categories";
+
+interface StatsData {
+  statistics: {
+    totalContracts: number;
+    totalFundingRequest: number;
+    totalBackers: number;
+    totalWithdrawals: number;
+  }[];
+}
+
 export default function Home() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: 'start',
     slidesToScroll: 4,
     containScroll: 'trimSnaps'
   });
+
+  const { data, error, isLoading } = useQuery<StatsData>({
+    queryKey: ["stats"],
+    queryFn: ({ queryKey }): any => {
+      const [] = queryKey;
+      return getStats();
+    }
+  });
+
+  const { totalContracts, totalFundingRequest, totalBackers, totalWithdrawals } = data?.statistics[0] || {};
+
+  console.log("data",data);
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -50,9 +77,11 @@ export default function Home() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
-            <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
-              Start a Project
-            </button>
+            <Link href="/new-project">
+              <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                Start a Project
+              </button>
+            </Link>
             <ConnectButton />
           </div>
         </div>
@@ -62,31 +91,13 @@ export default function Home() {
       <div className="w-full bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <ul className="flex justify-center space-x-8">
-            <li>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 font-medium">
-                Art
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 font-medium">
-                Music
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 font-medium">
-                Science
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 font-medium">
-                Technology
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 font-medium">
-                Film
-              </a>
-            </li>
+            {categories.map((category) => (
+              <li key={category.value}>
+                <a href={`/projects/category/${category.value}`} className="text-gray-600 hover:text-indigo-600 font-medium">
+                  {category.name}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
@@ -101,7 +112,7 @@ export default function Home() {
         <div className="flex flex-wrap justify-center gap-8">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-64">
             <div className="text-3xl font-bold text-indigo-600 mb-2">
-              1,234
+              {totalContracts || 0}
             </div>
             <div className="text-gray-600 font-medium">
               Projects Created
@@ -110,7 +121,7 @@ export default function Home() {
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-64">
             <div className="text-3xl font-bold text-indigo-600 mb-2">
-              $8.2M
+              {totalFundingRequest || 0} BNB
             </div>
             <div className="text-gray-600 font-medium">
               Total Amount Raised
@@ -119,10 +130,10 @@ export default function Home() {
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-64">
             <div className="text-3xl font-bold text-indigo-600 mb-2">
-              5,678
+              {totalBackers || 0}
             </div>
             <div className="text-gray-600 font-medium">
-              Total Creators
+              Total Backers
             </div>
           </div>
         </div>

@@ -37,10 +37,6 @@ export default function DonationsPage() {
         enabled: !!address,
       });
  
-      console.log("data",data);
-
-      console.log("error",error);
- 
 
   const { totalDonated, totalWithdrawn, donations, withdrawals } = data?.donor || {};
 
