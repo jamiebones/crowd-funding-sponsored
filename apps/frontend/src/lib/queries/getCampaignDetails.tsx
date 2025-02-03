@@ -9,6 +9,7 @@ export const getCampaignDetails = async (campaignID: string) => {
       id
       dateCreated
       projectDuration
+      currentMilestone
       owner {
         id
       }

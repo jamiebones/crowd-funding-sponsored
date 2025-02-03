@@ -150,29 +150,41 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
                   <StatsCard title="Status" value={campaign?.campaignRunning ? 'Active' : 'Ended'} />
                 </div>
               </div>
-              <div className="bg-white rounded-xl p-6 pb-2">
-                <h3 className="text-xl font-semibold mb-1">Owner</h3>
+              <div className="bg-white rounded-xl pl-6 pb-1">
+                <h4 className="text-xl font-semibold">Project Duration</h4>
+                <p className="text-gray-600">{new Date(+campaign?.projectDuration! *  1000).toLocaleDateString()}</p>
+              </div>
+              <div className="bg-white rounded-xl pl-6 pb-1">
+                <h4 className="text-xl font-semibold">Owner</h4>
                 <p className="text-gray-600">{campaign?.owner?.id}</p>
               </div>
-              <div className="bg-white rounded-xl p-6">
-                <h3 className="text-xl font-semibold mb-3">Campaign Details</h3>
+              <div className="bg-white rounded-xl pl-6">
+                <h4 className="text-xl font-semibold mb-3">Campaign Details</h4>
                 <p className="text-gray-600">{campaign?.content.details}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Milestone Section */}
-        <MilestoneSection milestones={campaign?.milestone || []} />
-
-        {/* Donors Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+         {/* Donors Section */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <DonorsSection donations={campaign?.donations || []} 
            contractAddress={campaign?.contractAddress as string} id={id} 
            withdrawals={campaign?.donorsRecall || []} />
           <WithdrawalsSection withdrawals={campaign?.donorsRecall || []} />
         </div>
 
+        {/* Milestone Section */}
+        <MilestoneSection milestones={campaign?.milestone || []} 
+          currentMilestone={campaign?.currentMilestone || ''} 
+          donations={campaign?.donations || []} 
+          withdrawals={campaign?.donorsRecall || []} 
+          contractAddress={campaign?.contractAddress as string}
+          projectDuration={+campaign?.projectDuration! || 0}
+          owner={campaign?.owner?.id || ''}
+        />
+
+      { address?.toLowerCase() === campaign?.owner?.id?.toLowerCase() && (
         <div className="group relative">
           <button
             onClick={() => setIsModalOpen(true)}
@@ -187,6 +199,7 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
             </div>
           </div>
         </div>
+        )}
 
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -56,4 +56,9 @@ const filterDonations = (donations: any[], withdrawals: any[]) => {
   });
 };
 
-  export { isPdf, getCampaignCategories, truncateAddress, copyToClipboard, filterDonations };
+const canWithdrawMilestone = (projectDuration: number) => {
+  return new Date() > new Date(projectDuration * 1000);
+};
+
+  export { isPdf, getCampaignCategories, truncateAddress, copyToClipboard, 
+    filterDonations, canWithdrawMilestone };

@@ -7,8 +7,8 @@ import { ethers } from 'ethers';
 import CrowdFundingContractABI from "../../../../abis/CrowdFundingContract.json";
 import { useQueryClient } from '@tanstack/react-query';
 import { FaCopy } from 'react-icons/fa';
-import { copyToClipboard, filterDonations } from '@/lib/utility';
-import { truncateAddress } from '@/lib/utility';
+import { copyToClipboard, filterDonations, truncateAddress } from '@/lib/utility';
+
 
 export const DonorsSection = ({ donations, contractAddress, id, withdrawals }: 
   { donations: any[], contractAddress: string, id: string, withdrawals: any[] }) => {
