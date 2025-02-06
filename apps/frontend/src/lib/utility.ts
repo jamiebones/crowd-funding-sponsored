@@ -59,5 +59,10 @@ const canWithdrawMilestone = (projectDuration: number) => {
   return new Date() > new Date(projectDuration * 1000);
 };
 
+const trendingCampaigns = (campaigns: any[]) => {
+  let sortedCampaigns = campaigns.sort((a, b) => b.amountRaised - a.amountRaised);
+  return sortedCampaigns.slice(0, 20);
+};
+
   export { isPdf, getCampaignCategories, truncateAddress, copyToClipboard, 
-    filterDonations, canWithdrawMilestone };
+    filterDonations, canWithdrawMilestone, trendingCampaigns };

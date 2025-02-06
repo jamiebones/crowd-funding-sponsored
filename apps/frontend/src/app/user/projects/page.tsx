@@ -31,7 +31,7 @@ export default function UserProjects() {
     enabled: !!address,
   });
 
-  console.log("campaigns", campaigns);
+
 
  
 

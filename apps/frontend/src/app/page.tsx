@@ -12,7 +12,10 @@ import { getStats } from '@/lib/queries/getStats';
 import Link from 'next/link';
 
 import { categories } from "./constant/categories";
-
+import { getAllCampaigns } from '@/lib/queries/getAllCampaigns';
+import Campaign from './interface/Campaign';
+import { Loading } from './components/common/Loading';
+import { trendingCampaigns } from '@/lib/utility';
 interface StatsData {
   statistics: {
     totalContracts: number;
@@ -20,6 +23,10 @@ interface StatsData {
     totalBackers: number;
     totalWithdrawals: number;
   }[];
+}
+
+interface AllCampaigns {
+  campaigns: Campaign[];
 }
 
 export default function Home() {
@@ -39,7 +46,26 @@ export default function Home() {
 
   const { totalContracts, totalFundingRequest, totalBackers, totalWithdrawals } = data?.statistics[0] || {};
 
-  console.log("data",data);
+  const { data: allCampaigns, error: allCampaignsError, isLoading: allCampaignsLoading } = useQuery<AllCampaigns>({
+    queryKey: ["allCampaigns"],
+    queryFn: ({ queryKey }): any => {
+      const [] = queryKey;
+      return getAllCampaigns();
+    }
+  });
+
+  let campaigns = allCampaigns?.campaigns || [];
+
+  if (allCampaignsError) {
+    return <div>Error fetching campaigns: {allCampaignsError.message}</div>
+  }
+
+ 
+  let featuredCampaign = Math.floor(Math.random() * campaigns?.length);
+
+  let trendingProjects = trendingCampaigns(campaigns);
+
+  console.log("trending projects", trendingProjects);
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -51,15 +77,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar/Header */}
+      {/* Commented out navigation
       <nav className="w-full bg-white shadow-sm px-4 py-3">
         <div className="max-w-7xl mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-4">
-          {/* App Name/Logo */}
           <div className="text-2xl font-bold text-indigo-600">
             CrowdChain
           </div>
 
-          {/* Search Box - will grow to take available space */}
           <div className="order-3 md:order-none w-full md:w-auto flex-grow md:mx-8">
             <div className="relative">
               <input
@@ -75,7 +99,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-4">
             <Link href="/new-project">
               <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
@@ -86,6 +109,7 @@ export default function Home() {
           </div>
         </div>
       </nav>
+      */}
 
       {/* Categories */}
       <div className="w-full bg-white border-b">
@@ -142,7 +166,12 @@ export default function Home() {
       {/* Featured and Recommended Projects Section */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="flex flex-wrap justify-center gap-8">
-          <FeaturedProject />
+
+          {allCampaignsLoading ? (
+            <Loading />
+          ) : (
+            <FeaturedProject campaign={campaigns[featuredCampaign]} />
+          )}
           <RecommendedProjects />
         </div>
       </div>
@@ -153,7 +182,13 @@ export default function Home() {
       </div>
 
       {/* Carousel Section */}
-      <ProjectCarousel />
+      {allCampaignsLoading ? (
+        <Loading />
+      ) : (
+        trendingProjects.length > 0 && (
+          <ProjectCarousel campaigns={trendingProjects || []} />
+        )
+      )}
 
       {/* Footer */}
       <Footer />

@@ -1,15 +1,16 @@
 'use client';
 
-
-
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { getDonorDetails } from '@/lib/queries/getDonorDetails';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import Donation from '@/app/interface/Donations';
 import Withdrawal from '@/app/interface/DonationWithdrawn';
 import { getCampaignCategories } from '@/lib/utility';
+import TokenABI from '../../../../abis/CrowdFundingToken.json';
+const tokenAddress = process.env.NEXT_PUBLIC_TOKEN_ADDRESS;
+
 
 
 interface UserDonationsData {
@@ -21,8 +22,6 @@ interface UserDonationsData {
     }
   
 }
-
-
 
 export default function DonationsPage() {
 
@@ -36,7 +35,16 @@ export default function DonationsPage() {
         },
         enabled: !!address,
       });
- 
+
+      const { data: balance, error: errorBalance, isLoading: isLoadingBalance } = useReadContract({
+        address: tokenAddress as `0x${string}`,
+        abi: TokenABI,
+        functionName: 'balanceOf',
+        args: address ? [address] : undefined,
+      });
+
+      console.log("errorBalance", errorBalance)
+      console.log("balance", balance)
 
   const { totalDonated, totalWithdrawn, donations, withdrawals } = data?.donor || {};
 
@@ -98,7 +106,7 @@ export default function DonationsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 shadow-lg">
           <h3 className="text-white text-lg font-medium">Total Donated</h3>
           <p className="text-white text-3xl font-bold">{totalDonated ? (totalDonated / 10 ** 18) : '0.00'} BNB</p>
@@ -106,6 +114,17 @@ export default function DonationsPage() {
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 shadow-lg">
           <h3 className="text-white text-lg font-medium">Total Withdrawn</h3>
           <p className="text-white text-3xl font-bold">{totalWithdrawn ? (totalWithdrawn / 10 ** 18) : '0.00'} BNB</p>
+        </div>
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 shadow-lg">
+          <h3 className="text-white text-lg font-medium">Token Balance</h3>
+          {isLoadingBalance ? (
+            <div className="flex items-center space-x-2 mt-2">
+              <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+              <span className="text-white">Loading...</span>
+            </div>
+          ) : (
+            <p className="text-white text-3xl font-bold">{balance ? (+balance.toString() / 10 ** 18) : '0.00'} DNTN</p>
+          )}
         </div>
       </div>
 

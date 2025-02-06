@@ -3,18 +3,21 @@ import ConnectButton from "./ConnectButton";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
+
+import CustomConnectButton from "./common/CustomConnectButton";
+
 const Navbar = () => {
   const pathname = usePathname();
    
-    if (pathname === '/') {
-      return <></>;
-    } 
+    // if (pathname === '/') {
+    //   return <></>;
+    // } 
         
   return (
     <header className="bg-white">
       <div className="container mx-auto px-4 py-4">
         <nav className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-blue-600">CrowdFund Dapp</h1>
+          <h1 className="text-2xl font-bold text-blue-600">Crowd Chain</h1>
           <div className="hidden md:flex space-x-6">
             <Link
               href="/"
@@ -84,7 +87,7 @@ const Navbar = () => {
             </Link>
           </div>
           <div className="space-x-4">
-            <ConnectButton />
+            <CustomConnectButton />
           </div>
         </nav>
       </div>
