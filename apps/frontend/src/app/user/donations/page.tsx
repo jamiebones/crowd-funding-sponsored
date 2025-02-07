@@ -46,7 +46,7 @@ export default function DonationsPage() {
       console.log("errorBalance", errorBalance)
       console.log("balance", balance)
 
-  const { totalDonated, totalWithdrawn, donations, withdrawals } = data?.donor || {};
+  const { totalDonated, totalWithdrawn, donations, withdrawals } = data?.donor ?? {};
 
   // Add empty state components
   if (!address) {

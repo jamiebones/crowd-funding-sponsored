@@ -150,13 +150,45 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
                   <StatsCard title="Status" value={campaign?.campaignRunning ? 'Active' : 'Ended'} />
                 </div>
               </div>
-              <div className="bg-white rounded-xl pl-6 pb-1">
-                <h4 className="text-xl font-semibold">Project Duration</h4>
-                <p className="text-gray-600">{new Date(+campaign?.projectDuration! *  1000).toLocaleDateString()}</p>
-              </div>
-              <div className="bg-white rounded-xl pl-6 pb-1">
-                <h4 className="text-xl font-semibold">Owner</h4>
-                <p className="text-gray-600">{campaign?.owner?.id}</p>
+              <div className="bg-white rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <h4 className="text-xl font-semibold">Project Duration</h4>
+                  <p className="text-gray-600">{new Date(+campaign?.projectDuration! * 1000).toLocaleDateString()}</p>
+                </div>
+                
+                <div className="flex items-center justify-between border-b pb-3">
+                  <h4 className="text-xl font-semibold">Owner</h4>
+                  <div className="flex items-center gap-2">
+                    <p className="text-gray-600 truncate max-w-[250px]" title={campaign?.owner?.id}>
+                      {campaign?.owner?.id}
+                    </p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(campaign?.owner?.id || '');
+                        toast.success('Address copied to clipboard!');
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded-full"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xl font-semibold">Contract</h4>
+                  <a 
+                    href={`https://${process.env.NEXT_PUBLIC_ENV === 'testnet' ? 'testnet.' : '' }bscscan.com/address/${campaign?.contractAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-600 hover:text-purple-800 truncate max-w-[250px] hover:underline"
+                    title={campaign?.contractAddress}
+                  >
+                    {campaign?.contractAddress}
+                  </a>
+                </div>
               </div>
               <div className="bg-white rounded-xl pl-6">
                 <h4 className="text-xl font-semibold mb-3">Campaign Details</h4>

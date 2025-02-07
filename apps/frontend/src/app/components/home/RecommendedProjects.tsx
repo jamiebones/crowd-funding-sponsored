@@ -2,8 +2,9 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import ProjectCard from "./ProjectCard";
+import Campaign from "@/app/interface/Campaign";
 
-export default function RecommendedProjects() {
+export default function RecommendedProjects({ campaigns }: { campaigns: Campaign[] }) {
   const [currentPage, setCurrentPage] = useState(0);
   
   const projects = [
@@ -234,8 +235,8 @@ export default function RecommendedProjects() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {getCurrentProjects().map((project) => (
-          <ProjectCard key={project.id} project={project} />
+        {campaigns.map((campaign) => (
+          <ProjectCard key={campaign.id} campaign={campaign} />
         ))}
       </div>
     </div>

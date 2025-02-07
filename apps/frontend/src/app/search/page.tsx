@@ -18,6 +18,7 @@ interface SearchCampaignsData {
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startSearch, setStartSearch] = useState(false);
+  const [showSearchHelp, setShowSearchHelp] = useState(false);
 
   const handleSearch = () => {
     setStartSearch(true);
@@ -55,25 +56,69 @@ export default function SearchPage() {
         </h1>
         
         {/* Search Section */}
-        <div className="max-w-3xl mx-auto mb-12">
-          <div className="flex gap-4 shadow-lg rounded-lg overflow-hidden bg-white p-2">
-            <input
-              type="text"
-              placeholder="Search campaigns..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setStartSearch(false)
-              }}
-              className="flex-1 px-4 py-3 text-gray-700 focus:outline-none"
-            />
-            <button
-              onClick={handleSearch}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg flex items-center gap-2 transition-colors duration-200"
-            >
-              <FiSearch className="w-5 h-5" />
-              <span>Search</span>
-            </button>
+        <div className="max-w-4xl mx-auto mb-12">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex flex-col gap-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search campaigns... (Try using operators like & | <-> :*)"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setStartSearch(false)
+                  }}
+                  className="w-full px-4 py-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  onClick={handleSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200"
+                >
+                  <FiSearch className="w-5 h-5" />
+                  <span>Search</span>
+                </button>
+              </div>
+              
+              <button
+                onClick={() => setShowSearchHelp(!showSearchHelp)}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 self-start transition-colors duration-200 bg-blue-50 px-3 py-1.5 rounded-md hover:bg-blue-100"
+              >
+                {showSearchHelp ? 'Hide' : 'Show'} search operators help ℹ️
+              </button>
+
+              {showSearchHelp && (
+                <div className="bg-gray-50 rounded-lg p-4 mt-2">
+                  <h3 className="font-semibold text-gray-700 mb-3">Search Operators Guide</h3>
+                  <div className="grid gap-3 text-sm">
+                    <div className="grid grid-cols-[auto,1fr] gap-4">
+                      <code className="bg-gray-200 px-2 py-1 rounded">&</code>
+                      <div>
+                        <p className="font-medium text-gray-700">AND operator</p>
+                        <p className="text-gray-600">Combines multiple search terms (e.g., "crypto & blockchain")</p>
+                      </div>
+
+                      <code className="bg-gray-200 px-2 py-1 rounded">|</code>
+                      <div>
+                        <p className="font-medium text-gray-700">OR operator</p>
+                        <p className="text-gray-600">Matches any of the terms (e.g., "nft | crypto")</p>
+                      </div>
+
+                      <code className="bg-gray-200 px-2 py-1 rounded">&lt;-&gt;</code>
+                      <div>
+                        <p className="font-medium text-gray-700">FOLLOW BY operator</p>
+                        <p className="text-gray-600">Specify word distance (e.g., "web &lt;-&gt; development")</p>
+                      </div>
+
+                      <code className="bg-gray-200 px-2 py-1 rounded">:*</code>
+                      <div>
+                        <p className="font-medium text-gray-700">PREFIX search</p>
+                        <p className="text-gray-600">Matches word beginnings (e.g., "block:*" matches blockchain)</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

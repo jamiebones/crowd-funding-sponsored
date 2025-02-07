@@ -57,7 +57,7 @@ export default function StartProject() {
       toast.success(`Transaction hash: ${hash}`, {
         position: "top-right",
       });
-      router.push("/");
+      router.push("/user/projects");
     }
   }, [hash, isSuccess]);
 
@@ -147,8 +147,8 @@ export default function StartProject() {
         date: endTimestamp,
     }
     let fees: any = createFee as bigint
-    fees = +fees.toString()/1e18;
-    console.log("Fees", fees)
+    // Convert BigInt to string and format with ethers
+    const formattedFees = ethers.formatEther(fees)
     formdata.append("projectDetails", JSON.stringify(projectDetails));
     const response = await axios.post('/api/upload', formdata, {
       headers: {
@@ -171,11 +171,12 @@ export default function StartProject() {
             projectData.title, 
             ethers.parseEther(projectData.fundingGoal.toString()), 
             BigInt(endTimestamp)],                                              
-        value: ethers.parseEther(fees.toString()),
+        value: ethers.parseEther(formattedFees)
       });
 
     } catch (error) {
       console.error("Error creating project:", error);
+      setIsWritingContract(false);
       toast.error(error instanceof Error ? error.message : 'Error creating project', {
         position: "top-right",
       });

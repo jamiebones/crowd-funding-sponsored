@@ -9,6 +9,8 @@ export const searchCampaignsByContent = async (searchText: string) => {
         throw new Error("searchText must be a non-empty string");
     }
 
+
+
     const formattedSearchText = searchText.includes(" ")
         ? `'${searchText}'`
         : searchText;
@@ -35,7 +37,10 @@ export const searchCampaignsByContent = async (searchText: string) => {
     }
 `;
 
-    const variables = { text: formattedSearchText };
+    // console.log("formattedSearchText" , formattedSearchText);
+    // console.log("searchText" , searchText);
+
+    const variables = { text: searchText };
     const data = await client.request(query, variables);
     return data;
 };
