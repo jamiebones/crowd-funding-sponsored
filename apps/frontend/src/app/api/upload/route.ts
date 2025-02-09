@@ -21,7 +21,7 @@ type Project = {
 }
 
 
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
     const formdata = await req.formData();
     const files = formdata.getAll("files") as File[];
     let project = formdata.get("projectDetails") as string;

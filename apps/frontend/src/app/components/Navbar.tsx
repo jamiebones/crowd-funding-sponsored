@@ -1,5 +1,5 @@
 "use client";
-import ConnectButton from "./ConnectButton";
+
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
