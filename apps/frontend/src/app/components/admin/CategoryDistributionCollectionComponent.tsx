@@ -33,15 +33,16 @@ const CategoryDistributionComponent = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4">Campaign Categories Distribution</h2>
+      <h2 className="text-xl font-semibold mb-1">Campaign Categories Distribution</h2>
       <div className="flex justify-between items-center">
-        <div className="w-3/4 p-6">
+        <div className="w-3/4 p-2">
           <PieChart
             data={groupedData}
             label={({ dataEntry }) => `${dataEntry.title}`}
-            labelStyle={{ fontSize: '4px' }}
-            radius={30}
+            labelStyle={{ fontSize: '2px' }}
+            radius={20}
             labelPosition={105}
+            lineWidth={20}
           />
         </div>
         <div className="w-1/4">

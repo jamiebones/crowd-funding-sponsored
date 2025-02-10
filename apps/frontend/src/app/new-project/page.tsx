@@ -188,9 +188,38 @@ export default function StartProject() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-3xl font-bold text-center mb-8">
-          Start Your Project
-        </h2>
+        {/* New Description Section */}
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Start Your Project
+          </h2>
+          <div className="max-w-2xl mx-auto">
+            <p className="text-gray-600 mb-6">
+              Transform your innovative ideas into reality through our crowdfunding platform. 
+              Follow these simple steps to launch your project:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-primary mb-2">1. Choose Your Category</h3>
+                <p className="text-sm text-gray-600">Select a category that best fits your project and set your funding goal.</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-primary mb-2">2. Add Project Details</h3>
+                <p className="text-sm text-gray-600">Provide a compelling title and description that will inspire backers.</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-primary mb-2">3. Upload Media</h3>
+                <p className="text-sm text-gray-600">Add images (max 100KB each) to showcase your project.</p>
+              </div>
+            </div>
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Important:</span> Creating a project requires a small fee to cover smart contract deployment. 
+                This helps maintain the quality and security of our platform.
+              </p>
+            </div>
+          </div>
+        </div>
         
         {/* Progress Steps */}
         <div className="mb-8">

@@ -109,6 +109,21 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Description Section */}
+      <div className="bg-gradient-to-b from-white to-gray-50 py-16">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
+            Welcome to CrowdFunding DApp
+          </h2>
+          <p className="text-lg text-gray-600 leading-relaxed">
+            Our decentralized crowdfunding platform empowers creators and innovators to bring their ideas to life. 
+            Built on blockchain technology, we provide a transparent, secure, and efficient way to fund projects. 
+            Whether you're an entrepreneur, artist, or innovator, connect with a community of backers who believe 
+            in your vision and want to support your journey.
+          </p>
+        </div>
+      </div>
+
       {/* Hero Section with Stats */}
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-12">
