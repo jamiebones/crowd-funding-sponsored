@@ -1,30 +1,43 @@
 'use client';
 
 import { PieChart } from 'react-minimal-pie-chart';
-import { getAllCampaigns } from '@/lib/queries/getAllCampaigns';
-import { getCampaignCategories } from '@/lib/utility';
-
-// Dummy data for categories
-const categoryData = [
-  { title: 'Health', value: 39, color: '#FF6384' },
-  { title: 'Education', value: 25, color: '#36A2EB' },
-  { title: 'Technology', value: 18, color: '#FFCE56' },
-  { title: 'Environment', value: 15, color: '#4BC0C0' },
-  { title: 'Arts', value: 12, color: '#9966FF' },
-];
-
-
+import { getAllCampaignsMinimal } from '@/lib/queries/getAllCampaignsMinimal';
+import { getCampaignCategories, groupCampaignsByCategory } from '@/lib/utility';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loading } from '../common/Loading';
 
 
 // Category Distribution Component
 const CategoryDistributionComponent = () => {
+  const { data, error, isLoading } = useQuery<{campaigns: {id: string, category: string}[]}>({
+    queryKey: ["category-distribution"],
+    queryFn: (): any => {
+      return getAllCampaignsMinimal();
+    }
+  });
+
+  if (isLoading) return <Loading />;
+
+
+  if (error) return <div>Error: {error.message}</div>
+
+
+  let groupedData: { title: string, value: number, color: string }[] = [];
+  if (data) {
+    groupedData = groupCampaignsByCategory(data);
+  }
+ 
+
+
+
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h2 className="text-xl font-semibold mb-4">Campaign Categories Distribution</h2>
       <div className="flex justify-between items-center">
         <div className="w-3/4 p-6">
           <PieChart
-            data={categoryData}
+            data={groupedData}
             label={({ dataEntry }) => `${dataEntry.title}`}
             labelStyle={{ fontSize: '4px' }}
             radius={30}
@@ -32,7 +45,7 @@ const CategoryDistributionComponent = () => {
           />
         </div>
         <div className="w-1/4">
-          {categoryData.map((category) => (
+          {groupedData.map((category) => (
             <div key={category.title} className="flex items-center mb-2">
               <div
                 className="w-4 h-4 rounded mr-2"
