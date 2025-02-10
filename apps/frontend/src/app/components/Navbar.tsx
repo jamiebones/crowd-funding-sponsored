@@ -53,7 +53,7 @@ const Navbar = () => {
             </Link>
 
             <Link
-              href="/explore"
+              href="/search"
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 pathname === "/search"
                   ? "bg-gray-900 text-white"
@@ -76,14 +76,14 @@ const Navbar = () => {
 
 
             <Link
-              href="/metrics"
+              href="/admin"
               className={`px-3 py-2 rounded-md text-sm font-medium ${
-                pathname === "/metrics"
+                pathname === "/admin"
                   ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-gray-700 hover:text-white"
               }`}
             >
-              Metrics
+              Admin
             </Link>
           </div>
           <div className="space-x-4">

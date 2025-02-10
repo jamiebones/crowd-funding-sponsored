@@ -1,9 +1,46 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useWriteContract } from 'wagmi';
+import FactoryABI from "../../../../abis/FactoryContract.json";
+import { toast } from 'react-toastify';
+const factoryContractAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS || "0x";
 
 const TransferContractOwnership = () => {
   const [newOwnerAddress, setNewOwnerAddress] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [error, setError] = useState('');
+
+  const {
+    data: hash,
+    error: errorTransferring,
+    writeContract,
+    isSuccess,
+    isPending,
+    isError,
+  } = useWriteContract();
+
+  useEffect(() => {
+    if (isError) {
+      console.log("Error from mutation ", errorTransferring);
+      toast.error(`Error sending transaction: ${errorTransferring?.message}`, {
+        position: "top-right",
+      });
+    }
+  }, [isError]);
+
+  useEffect(() => {
+    if (isSuccess) {
+      toast.success("Transaction successful", {
+        position: "top-right",
+      });
+    }
+
+  }, [isSuccess]);
+
+
+
+
+
+
 
   const handleTransferOwnership = async () => {
     try {
@@ -11,6 +48,12 @@ const TransferContractOwnership = () => {
       console.log('Transferring ownership to:', newOwnerAddress);
       setOpenDialog(false);
       setNewOwnerAddress('');
+      writeContract({
+        address: factoryContractAddress as `0x${string}`,
+        abi: FactoryABI,
+        functionName: 'transferOwnership',
+        args: [newOwnerAddress]
+      });
     } catch (err) {
       setError('Failed to transfer ownership. Please try again.');
     }
@@ -91,7 +134,7 @@ const TransferContractOwnership = () => {
             hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
             transition-colors duration-200"
         >
-          Transfer Ownership
+           {isPending ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div> : "Transfer Ownership"}
         </button>
       </div>
 
@@ -120,11 +163,12 @@ const TransferContractOwnership = () => {
                 Cancel
               </button>
               <button
+                disabled={isPending}
                 onClick={handleTransferOwnership}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg
                   hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                Confirm Transfer
+                {isPending ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div> : "Confirm Transfer"}
               </button>
             </div>
           </div>
