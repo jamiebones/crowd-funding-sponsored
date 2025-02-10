@@ -1,7 +1,9 @@
 "use client";
 
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import FactoryABI from "../../../../abis/FactoryContract.json";
+const factoryContractAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`;
 
 interface AdminAccessProps {
   children: React.ReactNode;
@@ -9,7 +11,20 @@ interface AdminAccessProps {
 
 const AdminAccessComponent = ({ children }: AdminAccessProps) => {
   const { address, isConnected } = useAccount();
-  const adminAddress = process.env.NEXT_PUBLIC_ADMIN_WALLET_ADDRESS?.toLowerCase();
+  
+  const { data: adminAddress, isLoading: isLoadingAdminAddress, isError: isErrorAdminAddress } = useReadContract({
+    address: factoryContractAddress,
+    abi: FactoryABI,
+    functionName: 'owner',
+    args: isConnected ? [] : undefined
+  });
+
+  if (isErrorAdminAddress) {
+    console.error("Error fetching admin address:", isErrorAdminAddress);
+  }
+
+  console.log("adminAddress", adminAddress);
+
 
   if (!isConnected) {
     return (
@@ -25,7 +40,18 @@ const AdminAccessComponent = ({ children }: AdminAccessProps) => {
     );
   }
 
-  if (address?.toLowerCase() !== adminAddress) {
+  if (isLoadingAdminAddress) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center p-8 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 dark:border-gray-300 mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-300">
+          Verifying admin access...
+        </p>
+      </div>
+    );
+  }
+
+  if (address?.toLowerCase() !== adminAddress?.toString().toLowerCase()) {
     return (
       <div className="min-h-[400px] flex flex-col items-center justify-center p-8 rounded-lg bg-red-50 dark:bg-red-900/20">
         <svg

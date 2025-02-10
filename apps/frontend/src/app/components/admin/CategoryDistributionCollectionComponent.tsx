@@ -1,6 +1,8 @@
 'use client';
 
 import { PieChart } from 'react-minimal-pie-chart';
+import { getAllCampaigns } from '@/lib/queries/getAllCampaigns';
+import { getCampaignCategories } from '@/lib/utility';
 
 // Dummy data for categories
 const categoryData = [
