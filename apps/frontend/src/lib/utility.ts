@@ -24,7 +24,6 @@ const copyToClipboard = (text: string) => {
 };
 
 const filterDonations = (donations: any[], withdrawals: any[]) => {
-  debugger;
   // Group withdrawals by donor address
   const withdrawalsByDonor = new Map<string, number[]>();
 
@@ -84,7 +83,6 @@ const groupCampaignsByCategory = (campaigns: { campaigns: { id: string, category
     return acc;
   }, {} as Record<number, string>);
 
-  console.log("campaigns dhhhhhhhh", campaigns)
 
   // Group campaigns by category name
   const grouped = campaigns.campaigns.reduce<Record<string, number>>((acc, campaign) => {

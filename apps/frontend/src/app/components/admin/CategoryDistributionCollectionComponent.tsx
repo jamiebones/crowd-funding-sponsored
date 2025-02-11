@@ -2,8 +2,8 @@
 
 import { PieChart } from 'react-minimal-pie-chart';
 import { getAllCampaignsMinimal } from '@/lib/queries/getAllCampaignsMinimal';
-import { getCampaignCategories, groupCampaignsByCategory } from '@/lib/utility';
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { groupCampaignsByCategory } from '@/lib/utility';
+import { useQuery } from "@tanstack/react-query";
 import { Loading } from '../common/Loading';
 
 
