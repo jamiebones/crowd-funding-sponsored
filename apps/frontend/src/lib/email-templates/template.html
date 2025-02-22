@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        /* Reset styles for email clients */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            background-color: #f8f9fa;
+        }
+
+        .logo {
+            max-width: 150px;
+            height: auto;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #f8f9fa;
+            font-size: 12px;
+            color: #666666;
+        }
+
+        @media only screen and (max-width: 480px) {
+            .container {
+                width: 100% !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="{{logoUrl}}" alt="Company Logo" class="logo">
+        </div>
+
+        <div class="content">
+            <h1>{{heading}}</h1>
+
+            <p>Hello {{recipientName}},</p>
+
+            <p>{{mainContent}}</p>
+
+            {{#if callToAction}}
+            <a href="{{ctaUrl}}" class="button">{{ctaText}}</a>
+            {{/if}}
+
+            <p>Best regards,<br>
+                {{senderName}}<br>
+                {{companyName}}</p>
+        </div>
+
+        <div class="footer">
+            <p>{{companyName}}<br>
+                {{companyAddress}}</p>
+
+            <p>If you have any questions, please contact us at {{supportEmail}}</p>
+
+            <p>{{unsubscribeText}} <a href="{{unsubscribeUrl}}">unsubscribe here</a></p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -93,7 +93,9 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
 
               </div>
 
-              { canWithdrawMilestone(projectDuration) && address?.toLowerCase() === "" &&
+             <p>Can I withdraw:  { canWithdrawMilestone(projectDuration)}</p>
+
+              { canWithdrawMilestone(projectDuration) && address?.toLowerCase() !== "" &&
               <WithdrawMilestoneButton contractAddress={contractAddress} />}
 
             

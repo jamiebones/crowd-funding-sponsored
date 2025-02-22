@@ -10,6 +10,7 @@
   "dependencies": {
     "@ardrive/turbo-sdk": "^1.22.0",
     "@heroicons/react": "^2.2.0",
+    "@mailchain/sdk": "^0.31.0",
     "@rainbow-me/rainbowkit": "^2.2.3",
     "@react-pdf/renderer": "^4.1.6",
     "@reown/walletkit": "^1.1.2",
