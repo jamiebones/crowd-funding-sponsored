@@ -48,7 +48,7 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
                 <h3 className="text-xl font-semibold">{milestone.content.title}</h3>
               </div>
               <span className={`px-4 py-1 rounded-full ${
-                milestone.status === 'COMPLETED'
+                milestone.status === 2
                   ? 'bg-green-100 text-green-800'
                   : 'bg-yellow-100 text-yellow-800'
               }`}>
@@ -72,7 +72,12 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-gray-600">
-                    Voting ends <span className="font-medium text-blue-700">{formatDistance(new Date(milestone.periodToVote * 1000), new Date(), { addSuffix: true })}</span>
+                    {new Date(milestone.periodToVote * 1000) > new Date() 
+                      ? "Voting ends "
+                      : "Voting ended "} 
+                    <span className="font-medium text-blue-700">
+                      {formatDistance(new Date(milestone.periodToVote * 1000), new Date(), { addSuffix: true })}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -93,13 +98,11 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
 
               </div>
 
-             <p>Can I withdraw:  { canWithdrawMilestone(projectDuration)}</p>
 
               { canWithdrawMilestone(projectDuration) && address?.toLowerCase() !== "" &&
+              milestone.status === 1 && milestone.length > 1 &&
               <WithdrawMilestoneButton contractAddress={contractAddress} />}
 
-            
-         
           </details>
         ))}
       </div>

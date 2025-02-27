@@ -25,9 +25,13 @@ export const Carousel = ({ media }: { media: string[] }) => {
         {isPdf(media[currentIndex]) ? (
           <Document
             file={`https://arweave.net/${media[currentIndex].split(":")[0]}`}
-            className="w-full h-full flex items-center justify-center"
+            className="w-full h-full flex items-center justify-center p-8"
           >
-            <Page pageNumber={1} width={800} />
+            <Page 
+              pageNumber={1} 
+              width={800} 
+              className="shadow-lg"
+            />
           </Document>
         ) : (
           <img
