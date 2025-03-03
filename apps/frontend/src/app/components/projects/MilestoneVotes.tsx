@@ -31,7 +31,7 @@ const MilestoneVotes = ({contractAddress}: {contractAddress: string}) => {
       toast.success(`Voting successful: Transaction hash: ${hash}`, {
         position: "top-right",
       });
-     
+      window.location.reload();
     }
   }, [isSuccess, hash]);
 

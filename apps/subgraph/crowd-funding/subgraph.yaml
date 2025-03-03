@@ -59,7 +59,7 @@ templates:
           handler: handleDonationRetrievedByDonor
         - event: UserDonatedToProject(indexed address,uint256,indexed address,uint256)
           handler: handleUserDonatedToProject
-        - event: UserVotedOnMileStone(indexed address,indexed address,bool,uint256)
+        - event: VotedOnMilestone(indexed address,indexed address,bool,uint256,uint256,string)
           handler: handleUserVotedOnMileStone
         - event: MileStoneStatusUpdated(indexed address,uint8,string,uint256)
           handler: handleMileStoneStatusUpdated
@@ -67,8 +67,6 @@ templates:
           handler: handleCampaignEnded
         - event: MilestoneWithdrawal(indexed address,uint256,uint256)
           handler: handleFundsWithdrawn
-        - event: VotedOnMilestone(indexed address,indexed address,bool,uint256,uint256,string)
-          handler: handleVotedOnMilestone 
       file: ./src/contract.ts
   - kind: file/arweave
     name: ArweaveContentCampaign
@@ -96,5 +94,7 @@ templates:
           file: ./abis/CrowdFundingContract.json
       handler: handleMilestoneContent
       file: ./src/contract.ts
+
+
 
 

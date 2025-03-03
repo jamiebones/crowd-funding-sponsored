@@ -13,7 +13,7 @@ interface VoteDisplayProps {
 
 const VoteDisplay: React.FC<VoteDisplayProps> = ({ votes }) => {
 
-    votes = dummyVotes;
+
   // If no votes, show message
   if (!votes || votes.length === 0) {
     return (
@@ -26,11 +26,11 @@ const VoteDisplay: React.FC<VoteDisplayProps> = ({ votes }) => {
   // Calculate total weights
   const totalSupport = votes
     .filter(vote => vote.support)
-    .reduce((sum, vote) => sum + vote.weight, 0);
+    .reduce((sum, vote) => sum + +vote.weight, 0);
     
   const totalAgainst = votes
     .filter(vote => !vote.support)
-    .reduce((sum, vote) => sum + vote.weight, 0);
+    .reduce((sum, vote) => sum + +vote.weight, 0);
 
   return (
     <div className="border rounded-lg p-4">
@@ -78,28 +78,6 @@ const VoteDisplay: React.FC<VoteDisplayProps> = ({ votes }) => {
 };
 
 
-const dummyVotes: Vote[] = [
-  {
-    voter: '0x1234567890123456789012345678901234567890',
-    weight: 100,
-    support: true
-  },
-  {
-    voter: '0xabcdef0123456789abcdef0123456789abcdef01',
-    weight: 50,
-    support: false
-  },
-  {
-    voter: '0x9876543210987654321098765432109876543210',
-    weight: 75,
-    support: true
-  },
-  {
-    voter: '0xfedcba9876543210fedcba9876543210fedcba98',
-    weight: 25,
-    support: false
-  },
-  // Add more dummy data as needed
-];
+
 
 export default VoteDisplay;

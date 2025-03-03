@@ -120,7 +120,7 @@ export function handleUserDonatedToProject(event: UserDonatedToProjectEvent): vo
 
     const stats = Statistic.load(STATS_ID);
     const campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()));
-    
+
     if (campaign) {
         let donation = new Donation(Bytes.fromUTF8(event.params.donor.toHexString()
             + "_" + event.params.date.toString() + "_" + event.params.project.toHexString()))
@@ -196,31 +196,40 @@ export function handleUserVotedOnMileStone(event: VotedOnMilestoneEvent): void {
     ]);
 
     let vote = new Vote(Bytes.fromUTF8(event.params.project.toHexString() + event.params.voter.toHexString() + event.params.timestamp.toString()))
-    let milestone = Milestone.load((event.params.milestoneCID))
+
+    let milestone = Milestone.load(event.params.milestoneCID.toString())
     let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()))
+    if (!milestone) {
+        log.warning('Vote Event for Non-Existent Milestone: {}', [
+            'Milestone CID: ' + event.params.milestoneCID
+        ]);
+    }
+    if (!campaign) {
+        log.warning('Vote Event for Non-Existent Campaign: {}', [
+            'Campaign ID: ' + event.params.project.toHexString()
+        ]);
+    }
     vote.voter = event.params.voter.toHexString();
     vote.support = event.params.support;
     vote.weight = event.params.amount;
     vote.timestamp = event.params.timestamp;
     vote.milestoneCID = event.params.milestoneCID;
-    if (milestone && campaign) {
+    if (milestone) {
         vote.milestone = milestone.id;
+    }
+    if (campaign) {
         vote.project = campaign.id.toString();
-    } else {
-        log.warning('Vote Event for Non-Existent Milestone or Campaign: {}', [
-            'Milestone CID: ' + event.params.milestoneCID,
-            'Project: ' + event.params.project.toHexString()
-        ]);
     }
     vote.save();
+    
     log.info('Vote Recorded: {}', [
         'Vote ID: ' + vote.id.toHexString(),
         'Voter: ' + vote.voter,
-        'Project: ' + vote.project,
         'Support: ' + vote.support.toString(),
         'Weight: ' + vote.weight.toString(),
         'Milestone CID: ' + vote.milestoneCID
     ]);
+
 }
 
 export function handleDonationRetrievedByDonor(event: DonationRetrievedByDonorEvent): void {

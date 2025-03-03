@@ -15,6 +15,7 @@ import { Plus } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import CrowdFundingFactoryABI from "../../../../../abis/CrowdFundingContract.json";
+import { MilestoneProgress } from '@/app/components/projects/MilestoneProgress';
 
 
 
@@ -70,6 +71,7 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
       });
       queryClient.invalidateQueries({ queryKey: ["projectDetails", id] });
     }
+  
   }, [isSuccess, hash, id]);
 
 
@@ -198,6 +200,13 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
+        {/* Milestone Progress Section - New Addition */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <MilestoneProgress 
+            milestones={campaign?.milestone || []}
+          />
+        </div>
+
          {/* Donors Section */}
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <DonorsSection donations={campaign?.donations || []} 
@@ -216,7 +225,11 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
           owner={campaign?.owner?.id || ''}
         />
 
-      { address?.toLowerCase() === campaign?.owner?.id?.toLowerCase() && (
+  
+
+      {address && 
+       address.toLowerCase() === campaign?.owner?.id?.toLowerCase() && 
+       (campaign?.milestone?.find(m => m.id === campaign.currentMilestone)?.status !== 1) && (
         <div className="group relative">
           <button
             onClick={() => setIsModalOpen(true)}
@@ -231,7 +244,7 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
             </div>
           </div>
         </div>
-        )}
+      )}
 
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

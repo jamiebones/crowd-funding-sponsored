@@ -31,7 +31,7 @@ const { address } = useAccount();
       toast.success(`Withdrawal successful: Transaction hash: ${hash}`, {
         position: "top-right",
       });
-     
+     window.location.reload();
     }
   }, [isSuccess, hash]);
 
@@ -59,11 +59,12 @@ const { address } = useAccount();
   };
 
   return (
+    
     <button
       onClick={handleWithdraw}
       disabled={isPending}
       className={`
-        px-4 py-2 mt-6
+        px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl shadow-lg hover:from-purple-700 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 hover:shadow-xl active:scale-95
         text-sm font-medium text-white
         bg-red-500 hover:bg-red-600
         rounded-lg transition-colors

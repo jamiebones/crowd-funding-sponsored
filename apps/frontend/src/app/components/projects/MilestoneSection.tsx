@@ -25,6 +25,8 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
     return votes.some(vote => 
       vote.voter.toLowerCase() === address?.toLowerCase());
   }
+
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8">
       <h2 className="text-2xl font-bold mb-6">Milestones</h2>
@@ -86,22 +88,48 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
               </div>
             </div>
 
+
               <div className="mt-6 flex-col justify-between items-center">
                   {isDonor && !hasVoted(milestone.votes) 
-                && currentMilestone === milestone.id 
-                && milestone.status === 1 && milestone.length > 1
-                && <MilestoneVotes contractAddress={contractAddress} />}
+                    && currentMilestone === milestone.milestoneCID 
+                    && +milestone.status === 1 && milestones.length > 1
+                    && <MilestoneVotes contractAddress={contractAddress} />
+                  }
 
-
-                { milestone.votes.length > 0 && <VoteDisplay votes={milestone.votes} />}
-                
-
+                  { milestone.votes.length > 0 ? (
+                    <VoteDisplay votes={milestone.votes} />
+                  ) : milestone.id === milestones[0].id && (
+                    <div className="text-center py-6 bg-gray-50 rounded-lg">
+                      <svg 
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                        />
+                      </svg>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No votes yet</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Be the first to vote on this milestone.
+                      </p>
+                    </div>
+                  )}
               </div>
 
 
-              { canWithdrawMilestone(projectDuration) && address?.toLowerCase() !== "" &&
-              milestone.status === 1 && milestone.length > 1 &&
-              <WithdrawMilestoneButton contractAddress={contractAddress} />}
+              { canWithdrawMilestone(projectDuration, milestone.dateCreated) && address?.toLowerCase() !== "" &&
+              +milestone.status === 1 &&
+              <div className="flex justify-center mt-6">
+                <WithdrawMilestoneButton 
+                  contractAddress={contractAddress} 
+                />
+              </div>}
 
           </details>
         ))}

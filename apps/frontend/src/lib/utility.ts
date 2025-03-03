@@ -55,8 +55,12 @@ const filterDonations = (donations: any[], withdrawals: any[]) => {
   });
 };
 
-const canWithdrawMilestone = (projectDuration: number) => {
-  return new Date() > new Date(projectDuration * 1000);
+const canWithdrawMilestone = (projectDuration: number, milestoneDate: number) => {
+  const currentDate = new Date();
+  const projectEndDate = new Date(projectDuration * 1000);
+  const milestoneDateWithGracePeriod = new Date((milestoneDate * 1000) + (14 * 24 * 60 * 60 * 1000)); // milestone + 14 days
+
+  return currentDate > projectEndDate && milestoneDateWithGracePeriod < currentDate;
 };
 
 const trendingCampaigns = (campaigns: any[]) => {

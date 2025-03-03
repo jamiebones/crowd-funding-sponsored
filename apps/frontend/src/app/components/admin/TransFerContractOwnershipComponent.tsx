@@ -33,6 +33,7 @@ const TransferContractOwnership = () => {
         position: "top-right",
       });
     }
+    window.location.reload();
 
   }, [isSuccess]);
 
