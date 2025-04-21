@@ -30,7 +30,7 @@ const CustomConnectButton = () => {
                 return (
                   <button
                     onClick={openConnectModal}
-                    className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 rounded-lg font-semibold bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
                     style={{
                       boxShadow: 'rgba(0, 0, 0, 0.04) 0px 2px 0px'
                     }}
@@ -58,7 +58,7 @@ const CustomConnectButton = () => {
 
                   <button
                     onClick={openAccountModal}
-                    className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
                   >
                     {account.displayName}
                     {account.displayBalance ? ` (${account.displayBalance})` : ''}

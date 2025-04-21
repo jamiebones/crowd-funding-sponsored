@@ -52,16 +52,16 @@ const CampaignListComponent = () => {
   if (error) return <div>Error: {error.message}</div>;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="max-w-3xl w-full mx-auto bg-white bg-opacity-90 backdrop-blur-md rounded-2xl shadow-lg p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Campaign Contracts</h2>
-        <div className="flex items-center gap-2">
-          <label htmlFor="limit" className="text-sm text-gray-600">Items per page:</label>
+        <h2 className="text-2xl font-extrabold text-indigo-600">Campaign Contracts</h2>
+        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-lg">
+          <label htmlFor="limit" className="text-sm font-medium text-indigo-600">Items per page:</label>
           <select
             id="limit"
             value={limit}
             onChange={handleLimitChange}
-            className="border border-gray-300 rounded-md px-2 py-1"
+            className="border border-indigo-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="1">1</option>
             <option value="5">5</option>
@@ -72,33 +72,33 @@ const CampaignListComponent = () => {
           </select>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <div className="overflow-x-auto rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-indigo-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider">
                 Category
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-indigo-600 uppercase tracking-wider">
                 Amount Sought
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-indigo-600 uppercase tracking-wider">
                 Goal
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-indigo-600 uppercase tracking-wider">
                 Backers
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider hidden md:table-cell">
                 Contract Address
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {data?.campaigns.map((campaign: Campaign) => (
-              <tr key={campaign.id} className="hover:bg-gray-50">
+              <tr key={campaign.id} className="hover:bg-indigo-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">{campaign.content?.title?.toUpperCase()}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{getCampaignCategories(campaign.category)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -110,7 +110,7 @@ const CampaignListComponent = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   {campaign.backers ?? 0}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                   <a 
                     href={`https:${NEXT_PUBLIC_ENV === "production" ? "bscscan.com" : "testnet.bscscan.com"}/address/${campaign.contractAddress}`}
                     target="_blank"
@@ -125,11 +125,11 @@ const CampaignListComponent = () => {
           </tbody>
         </table>
       </div>
-      <div className="flex justify-center items-center gap-4 mt-4">
+      <div className="flex justify-between items-center mt-6">
         <button
           onClick={handlePrevious}
           disabled={currentPage === 1}
-          className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 transition"
         >
           Previous
         </button>
@@ -139,7 +139,7 @@ const CampaignListComponent = () => {
         <button
           onClick={handleNext}
           disabled={!data || data.campaigns.length < limit}
-          className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 transition"
         >
           Next
         </button>

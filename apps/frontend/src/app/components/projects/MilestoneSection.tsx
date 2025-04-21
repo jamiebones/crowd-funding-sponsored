@@ -19,6 +19,10 @@ export const MilestoneSection = ({ owner, milestones, currentMilestone, donation
     return 0;
   });
 
+  console.log("currentMilestone", milestones);
+
+  
+
   const filteredDonations = filterDonations(donations, withdrawals);
   const isDonor = filteredDonations.some(donation => donation.donor.id.toLowerCase() === address?.toLowerCase());
   const hasVoted = (votes: any[]) => {

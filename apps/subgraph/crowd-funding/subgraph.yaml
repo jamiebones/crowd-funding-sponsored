@@ -62,7 +62,7 @@ templates:
         - event: VotedOnMilestone(indexed address,indexed address,bool,uint256,uint256,string)
           handler: handleUserVotedOnMileStone
         - event: MileStoneStatusUpdated(indexed address,uint8,string,uint256)
-          handler: handleMileStoneStatusUpdated
+          handler: handleMilestoneStatusChanged
         - event: CampaignEnded(indexed address,uint256) 
           handler: handleCampaignEnded
         - event: MilestoneWithdrawal(indexed address,uint256,uint256)

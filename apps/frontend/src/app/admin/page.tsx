@@ -8,15 +8,27 @@ import TransferContractOwnership from '../components/admin/TransFerContractOwner
 export default function AdminPage() {
     return (
       <AdminAccessComponent>
-      <div className="min-h-screen bg-gray-100">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-8">Admin Dashboard</h1>
-          <FeeManagementComponent />
-          <TransferContractOwnership />
-          <CategoryDistributionComponent />
-          <CampaignListComponent />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white p-6">
+          <div className="max-w-7xl mx-auto space-y-8">
+            <h1 className="text-4xl font-extrabold text-indigo-600 text-center">
+              Admin Dashboard
+            </h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-2xl shadow-lg p-6">
+                <FeeManagementComponent />
+              </div>
+              <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-2xl shadow-lg p-6">
+                <TransferContractOwnership />
+              </div>
+              <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-2xl shadow-lg p-6">
+                <CategoryDistributionComponent />
+              </div>
+              <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-2xl shadow-lg p-6">
+                <CampaignListComponent />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
       </AdminAccessComponent>
     );
   }

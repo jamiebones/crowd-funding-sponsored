@@ -38,11 +38,14 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
       return getCampaignDetails(campaignId as string);
     },
     enabled: !!id,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000, // poll every 10s for fresh data
   });
 
   const campaign = data?.campaign;
 
-  console.log("campaign ", campaign)
+  //console.log("campaign ", campaign)
 
   const {
     data: hash,
@@ -134,18 +137,18 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
  
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <section className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">{campaign?.content.title}</h1>
-          <div className="flex flex-wrap gap-6">
-            <div className="flex-1 min-w-[300px]">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            <div className="w-full lg:w-1/2">
               <Carousel media={campaign?.content.media || []} />
             </div>
-            <div className="flex-1 min-w-[300px] space-y-4">
-              <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl p-6">
-                <div className="grid grid-cols-2 gap-4">
+            <div className="w-full lg:w-1/2 space-y-4">
+              <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <StatsCard title="Amount Sought" value={`${ethers.formatEther(campaign?.amountSought.toString() || 0.0)} BNB`} />
                   <StatsCard title="Amount Raised" value={`${ethers.formatEther(campaign?.amountRaised.toString() || 0.0)} BNB`} />
                   <StatsCard title="Backers" value={campaign?.backers || 0} />
@@ -192,40 +195,48 @@ export default function CampaignDetails({ params }: { params: Promise<{ id: stri
                   </a>
                 </div>
               </div>
-              <div className="bg-white rounded-xl pl-6">
+              <div className="bg-white rounded-xl p-6">
                 <h4 className="text-xl font-semibold mb-3">Campaign Details</h4>
                 <p className="text-gray-600">{campaign?.content.details}</p>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Milestone Progress Section - New Addition */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        {/* Milestone Progress Section */}
+        <section className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
           <MilestoneProgress 
             milestones={campaign?.milestone || []}
           />
-        </div>
+        </section>
 
-         {/* Donors Section */}
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <DonorsSection donations={campaign?.donations || []} 
-           contractAddress={campaign?.contractAddress as string} id={id} 
-           withdrawals={campaign?.donorsRecall || []} />
-          <WithdrawalsSection withdrawals={campaign?.donorsRecall || []} />
-        </div>
+        {/* Supporters & Withdrawals */}
+        <section className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+          <h2 className="text-2xl font-semibold mb-4">Supporters</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <DonorsSection
+              donations={campaign?.donations || []}
+              contractAddress={campaign?.contractAddress as string}
+              id={id}
+              withdrawals={campaign?.donorsRecall || []}
+            />
+            <WithdrawalsSection withdrawals={campaign?.donorsRecall || []} />
+          </div>
+        </section>
 
         {/* Milestone Section */}
-        <MilestoneSection milestones={campaign?.milestone || []} 
-          currentMilestone={campaign?.currentMilestone || ''} 
-          donations={campaign?.donations || []} 
-          withdrawals={campaign?.donorsRecall || []} 
-          contractAddress={campaign?.contractAddress as string}
-          projectDuration={+campaign?.projectDuration! || 0}
-          owner={campaign?.owner?.id || ''}
-        />
-
-  
+        <section className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+          <h2 className="text-2xl font-semibold mb-4">Milestones</h2>
+          <MilestoneSection
+            milestones={campaign?.milestone || []}
+            currentMilestone={campaign?.currentMilestone || ''}
+            donations={campaign?.donations || []}
+            withdrawals={campaign?.donorsRecall || []}
+            contractAddress={campaign?.contractAddress as string}
+            projectDuration={+campaign?.projectDuration! || 0}
+            owner={campaign?.owner?.id || ''}
+          />
+        </section>
 
       {address && 
        address.toLowerCase() === campaign?.owner?.id?.toLowerCase() && 
@@ -270,4 +281,3 @@ const StatsCard = ({ title, value }: { title: string; value: string | number }) 
     <p className="text-2xl font-bold text-gray-800">{value}</p>
   </div>
 );
-

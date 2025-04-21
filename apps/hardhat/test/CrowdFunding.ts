@@ -103,17 +103,9 @@ describe("CrowdFunding", () => {
 
     describe("Milestone Management", () => {
         it("Should create milestone successfully", async () => {
-            const { campaignContract, deployer } = await setupFixture()
+            const { campaignContract, deployer, accounts } = await setupFixture()
 
             const durationToMilestone = await time.latest();
-
-            // await expect(campaignContract.createNewMilestone("testMilestoneCID"))
-            //     .to.emit(campaignContract, "MilestoneCreated")
-            //     .withArgs(deployer, durationToMilestone, durationToMilestone + 14 * 24 * 60 * 60, "testMilestoneCID")
-        })
-
-        it("Should revert if non-owner tries to create milestone", async () => {
-            const { campaignContract, accounts } = await setupFixture()
 
             await expect(
                 campaignContract.connect(accounts[1]).createNewMilestone("testMilestoneCID")
@@ -126,14 +118,26 @@ describe("CrowdFunding", () => {
 
             // Make donation first
             await campaignContract.connect(accounts[1]).giveDonationToCause({ value: donationAmount })
-
-            // Create milestone
-            await campaignContract.createNewMilestone("testMilestoneCID")
-
-            // Vote on milestone
+            await campaignContract.createNewMilestone("milestoneCID")
             await expect(campaignContract.connect(accounts[1]).voteOnMilestone(true))
                 .to.emit(campaignContract, "VotedOnMilestone")
+        })
 
+        it("Should revert voting if no milestone created", async () => {
+            const { campaignContract, accounts } = await setupFixture()
+            await expect(
+                campaignContract.connect(accounts[1]).voteOnMilestone(true)
+            ).to.be.revertedWith("No milestone exists")
+        })
+
+        it("Should prevent creating new milestone when one is pending", async () => {
+            const { campaignContract } = await setupFixture()
+            // Owner creates first milestone
+            await campaignContract.createNewMilestone("cid1")
+            // Attempt to create second while first pending
+            await expect(
+                campaignContract.createNewMilestone("cid2")
+            ).to.be.revertedWithCustomError(campaignContract, "YouHaveAPendingMileStone")
         })
     })
 

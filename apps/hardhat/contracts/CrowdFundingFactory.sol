@@ -75,14 +75,15 @@ contract CrowdFundingFactory is Ownable {
         
         // Move initialization parameters to a separate variable for better readability
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(string,string,uint8,uint256,uint256,address,address)",
+            "initialize(string,string,uint8,uint256,uint256,address,address,address)",
             _contractDetailsId,
             _title,
             uint8(_category),
             _goal,
             _duration,
             address(this),
-            address(donationToken)
+            address(donationToken),
+            msg.sender
         );
 
         (bool success, ) = clone.call(initData);

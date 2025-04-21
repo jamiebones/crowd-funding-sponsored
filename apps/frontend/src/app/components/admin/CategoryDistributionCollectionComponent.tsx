@@ -32,28 +32,28 @@ const CategoryDistributionComponent = () => {
 
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-1">Campaign Categories Distribution</h2>
-      <div className="flex justify-between items-center">
-        <div className="w-3/4 p-2">
+    <div className="max-w-2xl w-full mx-auto bg-white bg-opacity-90 backdrop-blur-md rounded-2xl shadow-lg p-6 mb-6">
+      <h2 className="text-2xl font-extrabold text-indigo-600 mb-4">Campaign Categories Distribution</h2>
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex-1 p-4 bg-indigo-50 rounded-lg flex justify-center items-center">
           <PieChart
             data={groupedData}
-            label={({ dataEntry }) => `${dataEntry.title}`}
-            labelStyle={{ fontSize: '2px' }}
-            radius={20}
-            labelPosition={105}
-            lineWidth={20}
+            label={({ dataEntry }) => `${Math.round((dataEntry.value / groupedData.reduce((a,b)=>a+b.value,0))*100)}%`}
+            labelStyle={{ fontSize: '5px', fontWeight: 'bold', fill: '#333' }}
+            radius={40}
+            labelPosition={70}
+            lineWidth={30}
           />
         </div>
-        <div className="w-1/4">
+        <div className="flex-1 p-4 bg-white rounded-lg space-y-2">
           {groupedData.map((category) => (
-            <div key={category.title} className="flex items-center mb-2">
+            <div key={category.title} className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded mr-2"
+                className="w-4 h-4 rounded"
                 style={{ backgroundColor: category.color }}
               />
-              <span className="text-gray-700">
-                {category.title}: {category.value} projects
+              <span className="text-gray-700 font-medium">
+                {category.title} ({category.value})
               </span>
             </div>
           ))}

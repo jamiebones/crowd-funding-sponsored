@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useEffect } from 'react';
 import { useWriteContract, useAccount } from "wagmi";
 import { toast } from 'react-toastify';
@@ -6,7 +6,7 @@ import CrowdFundingFactoryABI from "../../../../abis/CrowdFundingContract.json";
 
 
 
-export const WithdrawMilestoneButton = ({contractAddress}: {contractAddress: string}) => {
+export const WithdrawMilestoneButton = ({ contractAddress, votes = [] }: { contractAddress: string; votes?: { support: boolean; amount: string; }[] }) => {
 const { address } = useAccount();
   const {
     data: hash,
@@ -36,6 +36,11 @@ const { address } = useAccount();
   }, [isSuccess, hash]);
 
 
+  // Compute vote tallies: support vs against
+  const supportVotes = votes.reduce((sum, v) => sum + Number(v.amount), 0)
+  const againstVotes = votes.reduce((sum, v) => sum + (!v.support ? Number(v.amount) : 0), 0)
+  const passed = supportVotes > againstVotes
+
   const handleWithdraw = async () => {
     if (!address) {
       toast.error("Please connect your wallet to withdraw", {
@@ -43,7 +48,7 @@ const { address } = useAccount();
       });
       return;
     }
-    const confirmWithdraw = confirm("Are you sure you want to withdraw the milestone?");
+    const confirmWithdraw = confirm("Are you sure you want to execute the result of the milestone?");
     if (!confirmWithdraw) {
       return;
     }
@@ -71,7 +76,12 @@ const { address } = useAccount();
         disabled:opacity-50 disabled:cursor-not-allowed
       `}
     >
-      {isPending ? 'Withdrawing...' : 'Withdraw Milestone'}
+      {isPending
+        ? 'Executing...'
+        : passed
+        ? 'Withdraw Milestone Funds'
+        : 'Milestone Failed – Execute onChain'
+      }
     </button>
   );
 }

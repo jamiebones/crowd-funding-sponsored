@@ -150,7 +150,8 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         uint256 _amount,
         uint256 _duration,
         address _factoryAddress,
-        address _donationTokenAddress
+        address _donationTokenAddress,
+        address _owner
     ) external initializer {
         contractDetailsId = _contractDetailsId;
         title = _title;
@@ -158,7 +159,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         campaignDuration = _duration;
         targetAmount = _amount;
         factoryContractAddress = _factoryAddress;
-        campaignOwner = payable(tx.origin);
+        campaignOwner = payable(_owner);
         donationToken = CrowdFundingToken(_donationTokenAddress);
     }
 

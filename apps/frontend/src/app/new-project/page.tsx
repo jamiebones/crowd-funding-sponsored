@@ -186,31 +186,29 @@ export default function StartProject() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        {/* New Description Section */}
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold text-center mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-6">
+      <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-3xl shadow-2xl p-8 max-w-3xl w-full mx-auto">
+        {/* Overview */}
+        <div className="mb-12 text-center space-y-4">
+          <h2 className="text-4xl font-extrabold text-indigo-600">
             Start Your Project
           </h2>
           <div className="max-w-2xl mx-auto">
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-700 mb-6">
               Transform your innovative ideas into reality through our crowdfunding platform. 
               Follow these simple steps to launch your project:
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-semibold text-primary mb-2">1. Choose Your Category</h3>
-                <p className="text-sm text-gray-600">Select a category that best fits your project and set your funding goal.</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-semibold text-primary mb-2">2. Add Project Details</h3>
-                <p className="text-sm text-gray-600">Provide a compelling title and description that will inspire backers.</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-semibold text-primary mb-2">3. Upload Media</h3>
-                <p className="text-sm text-gray-600">Add images (max 100KB each) to showcase your project.</p>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+              {steps.map((label, idx) => (
+                <div key={idx} className="p-6 bg-gradient-to-tr from-indigo-100 to-purple-100 rounded-xl shadow-lg">
+                  <h3 className="text-xl font-semibold text-indigo-700 mb-2">{idx + 1}. {label}</h3>
+                  <p className="text-sm text-gray-800">{
+                    idx === 0 ? 'Select a category and set your funding goal.' :
+                    idx === 1 ? 'Provide a compelling title and description.' :
+                    'Upload images to showcase your project.'
+                  }</p>
+                </div>
+              ))}
             </div>
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-gray-700">
@@ -228,20 +226,20 @@ export default function StartProject() {
               <div key={label} className="flex items-center">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 
                   ${activeStep >= index 
-                    ? 'border-primary bg-primary text-white' 
+                    ? 'border-indigo-600 bg-indigo-600 text-white' 
                     : 'border-gray-300 text-gray-300'
                   }`}
                 >
                   {index + 1}
                 </div>
                 <div className={`text-sm mx-2 ${
-                  activeStep >= index ? 'text-primary' : 'text-gray-400'
+                  activeStep >= index ? 'text-indigo-600' : 'text-gray-400'
                 }`}>
                   {label}
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`w-16 h-0.5 ${
-                    activeStep > index ? 'bg-primary' : 'bg-gray-300'
+                    activeStep > index ? 'bg-indigo-600' : 'bg-gray-300'
                   }`} />
                 )}
               </div>
@@ -260,7 +258,7 @@ export default function StartProject() {
             className={`px-6 py-2 rounded-lg border ${
               activeStep === 0
                 ? 'border-gray-300 text-gray-300 cursor-not-allowed'
-                : 'border-primary text-primary hover:bg-primary hover:text-white transition-colors'
+                : 'border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors'
             }`}
           >
             Back
@@ -268,7 +266,7 @@ export default function StartProject() {
           <button
             disabled={(activeStep === steps.length - 1 && isUploading) || isWritingContract}
             onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
-            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-70 flex items-center gap-2"
+            className="px-6 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center gap-2"
           >
             {(isUploading || isWritingContract) && <Spinner />}
             {isWritingContract 

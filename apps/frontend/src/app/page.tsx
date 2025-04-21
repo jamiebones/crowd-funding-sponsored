@@ -1,7 +1,7 @@
 "use client";
 
 import useEmblaCarousel from 'embla-carousel-react';
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import FeaturedProject from "./components/home/FeaturedProject";
 import RecommendedProjects from "./components/home/RecommendedProjects";
 import ProjectCarousel from "./components/home/ProjectCarousel";
@@ -65,7 +65,13 @@ export default function Home() {
   }
 
  
-  let featuredCampaign = Math.floor(Math.random() * campaigns?.length);
+  // Client-only randomization to avoid SSR hydration mismatch
+  const [featuredCampaign, setFeaturedCampaign] = useState(0);
+  useEffect(() => {
+    if (campaigns.length > 0) {
+      setFeaturedCampaign(Math.floor(Math.random() * campaigns.length));
+    }
+  }, [campaigns]);
 
   let trendingProjects = trendingCampaigns(campaigns);
   let recommendedCampaigns: Campaign[] = [];
@@ -87,12 +93,12 @@ export default function Home() {
   }, [emblaApi]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white">
     
       {/* Categories */}
-      <div className="w-full bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <ul className="flex justify-center space-x-8">
+      <div className="w-full bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-center space-x-6">
+          <ul className="flex space-x-6">
             {categories.map((category) => (
               <li key={category.value}>
                 <Link 
@@ -110,8 +116,8 @@ export default function Home() {
       </div>
 
       {/* Description Section */}
-      <div className="bg-gradient-to-b from-white to-gray-50 py-16">
-        <div className="max-w-3xl mx-auto px-4 text-center">
+      <div className="py-16 flex items-center justify-center">
+        <div className="max-w-3xl mx-auto px-8 py-10 bg-white/80 backdrop-blur-sm rounded-xl shadow-xl text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">
             Welcome to CrowdFunding DApp
           </h2>
@@ -125,14 +131,14 @@ export default function Home() {
       </div>
 
       {/* Hero Section with Stats */}
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center">
+      <div className="max-w-7xl mx-auto px-6 py-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-12">
           Get funding for your project
         </h1>
         
         {/* Statistics Grid */}
         <div className="flex flex-wrap justify-center gap-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-64">
+          <div className="bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-lg w-64 hover:shadow-2xl transition-shadow">
             <div className="text-3xl font-bold text-indigo-600 mb-2">
               {totalContracts || 0}
             </div>
@@ -141,7 +147,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-64">
+          <div className="bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-lg w-64 hover:shadow-2xl transition-shadow">
             <div className="text-3xl font-bold text-indigo-600 mb-2">
               {totalFundingRequest ? ethers.formatEther(totalFundingRequest) : 0} BNB
             </div>
@@ -150,7 +156,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 w-64">
+          <div className="bg-white/90 backdrop-blur-sm p-8 rounded-2xl shadow-lg w-64 hover:shadow-2xl transition-shadow">
             <div className="text-3xl font-bold text-indigo-600 mb-2">
               {totalBackers || 0}
             </div>
@@ -162,7 +168,7 @@ export default function Home() {
       </div>
 
       {/* Featured and Recommended Projects Section */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-wrap justify-center gap-8">
 
           {allCampaignsLoading ? (
@@ -175,7 +181,7 @@ export default function Home() {
       </div>
 
       {/* Divider */}
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-6">
         <hr className="border-gray-200 my-12" />
       </div>
 
