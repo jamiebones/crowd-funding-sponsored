@@ -12,6 +12,11 @@ export class RecommendationService {
     static calculateSimilarityScore(source: Campaign, target: Campaign): number {
         if (source.id === target.id) return 0;
 
+        // Add safety checks for null content
+        if (!source.content || !target.content) {
+            return 0; // Return 0 similarity if either campaign has no content
+        }
+
         let score = 0;
 
         // Category similarity
@@ -25,8 +30,8 @@ export class RecommendationService {
         score += amountScore * this.SIMILARITY_WEIGHTS.AMOUNT;
 
         // Content similarity (using basic text matching)
-        const sourceText = `${source.content.title} ${source.content.details}`.toLowerCase();
-        const targetText = `${target.content.title} ${target.content.details}`.toLowerCase();
+        const sourceText = `${source.content.title || ''} ${source.content.details || ''}`.toLowerCase();
+        const targetText = `${target.content.title || ''} ${target.content.details || ''}`.toLowerCase();
         const contentScore = this.calculateTextSimilarity(sourceText, targetText);
         score += contentScore * this.SIMILARITY_WEIGHTS.CONTENT;
 
@@ -42,7 +47,14 @@ export class RecommendationService {
     }
 
     static getRecommendations(sourceCampaign: Campaign, allCampaigns: Campaign[]): Campaign[] {
-        const recommendations = allCampaigns
+        // Filter out campaigns with null/missing content and the source campaign itself
+        const validCampaigns = allCampaigns.filter(campaign => 
+            campaign.content && 
+            campaign.content.title && 
+            campaign.id !== sourceCampaign.id
+        );
+
+        const recommendations = validCampaigns
             .map(campaign => ({
                 campaign,
                 score: this.calculateSimilarityScore(sourceCampaign, campaign)

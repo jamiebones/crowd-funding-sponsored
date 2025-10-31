@@ -97,7 +97,12 @@ export default function Home() {
 
   let trendingProjects = trendingCampaigns(campaigns);
   let recommendedCampaigns: Campaign[] = [];
-  if (campaigns.length > 0 && featuredCampaign !== null) {
+  if (
+    campaigns.length > 0 &&
+    featuredCampaign !== null &&
+    campaigns[featuredCampaign] &&
+    campaigns[featuredCampaign].content
+  ) {
     recommendedCampaigns = RecommendationService.getRecommendations(
       campaigns[featuredCampaign],
       campaigns
