@@ -11,7 +11,9 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
       <div className="w-full space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Project Milestones</h2>
-          <span className="text-sm text-muted-foreground">No milestones available</span>
+          <span className="text-sm text-muted-foreground">
+            No milestones available
+          </span>
         </div>
         <div className="text-center py-8 text-gray-500">
           No milestones have been set for this project yet.
@@ -22,23 +24,32 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
 
   const completedMilestones = milestones.filter((m) => +m.status === 2).length;
   const totalMilestones = milestones.length;
-  const progressPercentage = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+  const progressPercentage =
+    totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 1: return "bg-yellow-500 text-yellow-50"; // Pending
-      case 2: return "bg-green-500 text-green-50"; // Approved
-      case 3: return "bg-red-500 text-red-50"; // Declined
-      default: return "bg-gray-200 dark:bg-gray-700";
+      case 1:
+        return "bg-yellow-500 text-yellow-50"; // Pending
+      case 2:
+        return "bg-green-500 text-green-50"; // Approved
+      case 3:
+        return "bg-red-500 text-red-50"; // Declined
+      default:
+        return "bg-gray-200 dark:bg-gray-700";
     }
   };
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case 1: return "Pending";
-      case 2: return "Approved";
-      case 3: return "Declined";
-      default: return "Unknown";
+      case 1:
+        return "Pending";
+      case 2:
+        return "Approved";
+      case 3:
+        return "Declined";
+      default:
+        return "Unknown";
     }
   };
 
@@ -81,7 +92,9 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
             <span className="text-sm font-medium">
               {milestone.content?.title || `Milestone ${index + 1}`}
             </span>
-            <span className={`text-xs ${+milestone.status === 2 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <span
+              className={`text-xs ${+milestone.status === 2 ? "text-primary" : "text-muted-foreground"}`}
+            >
               {getStatusLabel(milestone.status)}
             </span>
           </div>
