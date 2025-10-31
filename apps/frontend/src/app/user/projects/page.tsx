@@ -20,6 +20,7 @@ interface UserCampaignsData {
 
 export default function UserProjects() {
   
+  // All hooks must be called at the top level before any conditional logic
   const { address } = useAccount();
  
   const { data: campaigns, error, isLoading } = useQuery<UserCampaignsData>({
@@ -29,18 +30,64 @@ export default function UserProjects() {
       return getUserCampaigns(address as string);
     },
     enabled: !!address,
+    retry: (failureCount, error: any) => {
+      // Don't retry if it's a subgraph deployment error
+      if (error?.message?.includes('Subgraph service is currently unavailable')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
+  // Show connect wallet message if no address
+  if (!address) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">My Campaigns</h1>
+        <div className="flex flex-col items-center justify-center bg-blue-50 border border-blue-200 rounded-lg p-8 min-h-[400px]">
+          <div className="text-center">
+            <div className="text-blue-500 text-6xl mb-4">🔗</div>
+            <h2 className="text-xl font-semibold text-blue-800 mb-4">Connect Your Wallet</h2>
+            <p className="text-blue-600 mb-6">
+              Please connect your wallet to view your campaigns.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-
- 
-
+  // Handle subgraph unavailability with a user-friendly error message
   if (error) {
     console.error("Error fetching your campaigns:", error);
-    toast.error("Error fetching your campaigns", {
-      position: "top-right",
-      autoClose: 5000,
-    });
+    
+    const isSubgraphError = error?.message?.includes('Subgraph service is currently unavailable');
+    
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">My Campaigns</h1>
+        <div className="flex flex-col items-center justify-center bg-red-50 border border-red-200 rounded-lg p-8 min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-red-800 mb-4">
+              {isSubgraphError ? 'Service Temporarily Unavailable' : 'Error Loading Campaigns'}
+            </h2>
+            <p className="text-red-600 mb-6">
+              {isSubgraphError 
+                ? 'Our indexing service is currently being updated. Please try again in a few minutes.'
+                : 'We encountered an error while loading your campaigns. Please try again later.'
+              }
+            </p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
   
   if (isLoading) {

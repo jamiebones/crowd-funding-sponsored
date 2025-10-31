@@ -23,7 +23,7 @@ export default function CategoryAndFundingStep({ projectData, onUpdate }: Props)
   return (
     <div className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <p className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600">
           {projectData.isLoadingProjectFee ? (
             <div className="flex items-center">
               <span className="font-medium">Project Start Cost:</span>
@@ -39,7 +39,7 @@ export default function CategoryAndFundingStep({ projectData, onUpdate }: Props)
               {projectData.projectFee ? (Number(projectData.projectFee as bigint) / 10 ** 18).toFixed(10) : '0.00'} BNB
             </span>
           )}
-        </p>
+        </div>
       </div>
       
       <div className="flex flex-col">

@@ -22,7 +22,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Crowd Funding",
-  description: "A dapp for crowdfunding. Raising funds for a project. Creators get their ideas funded and donors are protected by the smart contract by ensuring they can withdraw their funds if they no longer want to support the project.",
+  description:
+    "A dapp for crowdfunding. Raising funds for a project. Creators get their ideas funded and donors are protected by the smart contract by ensuring they can withdraw their funds if they no longer want to support the project.",
 };
 
 export default async function RootLayout({
@@ -30,32 +31,29 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
- 
- 
   return (
     <html lang="en">
-      <body className={inter.className}>
-      <DonationProvider>
-      <AppKitProvider>
-        <Navbar />
-          {children}
-          <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-                transition={Bounce}
-              />
-        </AppKitProvider>
+      <body className={inter.className} suppressHydrationWarning={true}>
+        <DonationProvider>
+          <AppKitProvider>
+            <Navbar />
+            {children}
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+              transition={Bounce}
+            />
+          </AppKitProvider>
         </DonationProvider>
       </body>
     </html>
   );
 }
-
