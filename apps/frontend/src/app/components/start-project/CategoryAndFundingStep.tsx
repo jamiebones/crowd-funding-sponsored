@@ -7,7 +7,7 @@ interface Props {
     category: string;
     fundingGoal: number;
     isLoadingProjectFee: boolean;
-    projectFee: bigint;    
+    projectFee: bigint;
   };
   onUpdate: (data: {
     category?: string;
@@ -16,10 +16,10 @@ interface Props {
   }) => void;
 }
 
-
-
-export default function CategoryAndFundingStep({ projectData, onUpdate }: Props) {
-
+export default function CategoryAndFundingStep({
+  projectData,
+  onUpdate,
+}: Props) {
   return (
     <div className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -27,23 +27,42 @@ export default function CategoryAndFundingStep({ projectData, onUpdate }: Props)
           {projectData.isLoadingProjectFee ? (
             <div className="flex items-center">
               <span className="font-medium">Project Start Cost:</span>
-              <svg className="animate-spin h-4 w-4 ml-2 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                className="animate-spin h-4 w-4 ml-2 text-gray-600"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
             </div>
           ) : (
             <span>
-              <span className="font-medium">Project Start Cost:</span>{' '}
-        
-              {projectData.projectFee ? (Number(projectData.projectFee as bigint) / 10 ** 18).toFixed(10) : '0.00'} BNB
+              <span className="font-medium">Project Start Cost:</span>{" "}
+              {projectData.projectFee
+                ? (Number(projectData.projectFee as bigint) / 10 ** 18).toFixed(
+                    10
+                  )
+                : "0.00"}{" "}
+              BNB
             </span>
           )}
         </div>
       </div>
-      
+
       <div className="flex flex-col">
-        
         <label className="text-sm font-medium text-gray-700 mb-1">
           Category
         </label>
@@ -60,7 +79,7 @@ export default function CategoryAndFundingStep({ projectData, onUpdate }: Props)
           ))}
         </select>
       </div>
-      
+
       <div className="flex flex-col">
         <label className="text-sm font-medium text-gray-700 mb-1">
           Funding Goal (BNB)
@@ -76,4 +95,4 @@ export default function CategoryAndFundingStep({ projectData, onUpdate }: Props)
       </div>
     </div>
   );
-} 
+}
