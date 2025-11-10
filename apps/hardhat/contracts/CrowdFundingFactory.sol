@@ -13,7 +13,7 @@ contract CrowdFundingFactory is Ownable {
         address indexed owner,
         address indexed contractAddress, 
         string contractDetailsId,
-        string title,
+        string indexed title,
         uint8 category,
         uint256 duration,
         uint256 goal
@@ -27,6 +27,7 @@ contract CrowdFundingFactory is Ownable {
     error WithdrawalFailed();
     error InvalidFee();   
     error NoFundsToWithdraw();
+    error InvalidCategory();
 
     // State variables
     address private immutable CROWDFUNDING_IMPLEMENTATION;
@@ -34,6 +35,9 @@ contract CrowdFundingFactory is Ownable {
     address private crowdFundingToken;
     uint256 private fundingFee = 0.000000001 ether;
     CrowdFundingToken public donationToken;
+    
+    // Track campaigns by owner
+    mapping(address => address[]) public ownerToCampaigns;
 
      enum Category {
         TECHNOLOGY,
@@ -66,6 +70,11 @@ contract CrowdFundingFactory is Ownable {
         require(bytes(_title).length > 0, "Empty title");
         require(_goal > 0, "Goal must be greater than 0");
         require(_duration > 0, "Duration must be greater than 0");
+        
+        // Validate category
+        if (uint8(_category) > uint8(Category.OTHER)) {
+            revert InvalidCategory();
+        }
 
         if (msg.value < fundingFee) {
             revert FundingForNewContractTooSmall();
@@ -92,6 +101,7 @@ contract CrowdFundingFactory is Ownable {
         }
 
         deployedCrowdFundingContracts.push(clone);
+        ownerToCampaigns[msg.sender].push(clone);
 
         donationToken.addCrowdfundingContract(clone);
         
@@ -131,6 +141,10 @@ contract CrowdFundingFactory is Ownable {
     // View functions
     function getDeployedCrowdFundingContracts() external view returns (address[] memory) {
         return deployedCrowdFundingContracts;
+    }
+
+    function getCampaignsByOwner(address owner) external view returns (address[] memory) {
+        return ownerToCampaigns[owner];
     }
 
     function getFundingFee() external view returns (uint256) {

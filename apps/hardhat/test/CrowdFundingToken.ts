@@ -6,7 +6,7 @@ describe("CrowdFundingToken", () => {
     const setupFixture = deployments.createFixture(async () => {
         await deployments.fixture()
         const signers = await getNamedAccounts()
-        
+
         // Deploy token contract
         const tokenContract = await ethers.deployContract(
             "CrowdFundingToken",
@@ -43,24 +43,34 @@ describe("CrowdFundingToken", () => {
     describe("Deployment", () => {
         it("Should deploy with correct name and symbol", async () => {
             const { tokenContract } = await setupFixture()
-            
+
             expect(await tokenContract.name()).to.equal("Donation Token")
             expect(await tokenContract.symbol()).to.equal("DNTN")
         })
 
         it("Should set correct initial owner", async () => {
             const { tokenContract, deployer } = await setupFixture()
-            
+
             expect(await tokenContract.owner()).to.equal(deployer)
+        })
+
+        it("Should have correct token cap (1 billion)", async () => {
+            const { tokenContract } = await setupFixture()
+            const expectedCap = ethers.parseEther("1000000000") // 1 billion
+
+            expect(await tokenContract.cap()).to.equal(expectedCap)
         })
     })
 
     describe("Factory Setup", () => {
         it("Should set factory address and transfer ownership", async () => {
-            const { tokenContract, factoryAddress , deployer} = await setupFixture()
+            const { tokenContract, factoryAddress, deployer } = await setupFixture()
 
-            await tokenContract.connect(await ethers.getSigner(deployer)).setFactoryAndTransferOwnership(factoryAddress)
-            
+            await expect(
+                tokenContract.connect(await ethers.getSigner(deployer)).setFactoryAndTransferOwnership(factoryAddress)
+            ).to.emit(tokenContract, "CrowdfundingContractAdded")
+                .withArgs(factoryAddress)
+
             expect(await tokenContract.owner()).to.equal(factoryAddress)
             expect(await tokenContract.crowdfundingContracts(factoryAddress)).to.be.true
         })
@@ -87,9 +97,37 @@ describe("CrowdFundingToken", () => {
             const { tokenContract, accounts } = await setupFixture()
             const newContractAddress = await accounts[1].getAddress()
 
-            await tokenContract.addCrowdfundingContract(newContractAddress)
-            
+            await expect(
+                tokenContract.addCrowdfundingContract(newContractAddress)
+            ).to.emit(tokenContract, "CrowdfundingContractAdded")
+                .withArgs(newContractAddress)
+
             expect(await tokenContract.crowdfundingContracts(newContractAddress)).to.be.true
+        })
+
+        it("Should revert if adding zero address", async () => {
+            const { tokenContract } = await setupFixture()
+
+            await expect(
+                tokenContract.addCrowdfundingContract(ethers.ZeroAddress)
+            ).to.be.revertedWith("Invalid contract address")
+        })
+
+        it("Should allow owner to remove crowdfunding contract", async () => {
+            const { tokenContract, accounts } = await setupFixture()
+            const contractAddress = await accounts[1].getAddress()
+
+            // Add first
+            await tokenContract.addCrowdfundingContract(contractAddress)
+            expect(await tokenContract.crowdfundingContracts(contractAddress)).to.be.true
+
+            // Remove
+            await expect(
+                tokenContract.removeCrowdfundingContract(contractAddress)
+            ).to.emit(tokenContract, "CrowdfundingContractRemoved")
+                .withArgs(contractAddress)
+
+            expect(await tokenContract.crowdfundingContracts(contractAddress)).to.be.false
         })
 
         it("Should revert if non-owner tries to add crowdfunding contract", async () => {
@@ -98,6 +136,15 @@ describe("CrowdFundingToken", () => {
 
             await expect(
                 tokenContract.connect(accounts[1]).addCrowdfundingContract(newContractAddress)
+            ).to.be.revertedWithCustomError(tokenContract, "OwnableUnauthorizedAccount")
+        })
+
+        it("Should revert if non-owner tries to remove crowdfunding contract", async () => {
+            const { tokenContract, accounts } = await setupFixture()
+            const contractAddress = await accounts[1].getAddress()
+
+            await expect(
+                tokenContract.connect(accounts[2]).removeCrowdfundingContract(contractAddress)
             ).to.be.revertedWithCustomError(tokenContract, "OwnableUnauthorizedAccount")
         })
     })
@@ -111,7 +158,7 @@ describe("CrowdFundingToken", () => {
 
             // Add approved contract
             await tokenContract.addCrowdfundingContract(await approvedContract.getAddress())
-            
+
             // Mint tokens
             await tokenContract.connect(approvedContract).mint(
                 await recipient.getAddress(),
@@ -137,7 +184,7 @@ describe("CrowdFundingToken", () => {
 
             // Add approved contract
             await tokenContract.addCrowdfundingContract(await approvedContract.getAddress())
-            
+
             // Mint tokens first
             await tokenContract.connect(approvedContract).mint(
                 await approvedContract.getAddress(),
@@ -157,6 +204,67 @@ describe("CrowdFundingToken", () => {
             await expect(
                 tokenContract.connect(accounts[2]).burnTokens(amount, accounts[1].address)
             ).to.be.revertedWith("Only crowdfunding contracts can burn")
+        })
+
+        it("Should enforce token cap when minting", async () => {
+            const { tokenContract, accounts } = await setupFixture()
+            const approvedContract = accounts[1]
+            const recipient = accounts[2]
+            const cap = await tokenContract.cap()
+
+            // Add approved contract
+            await tokenContract.addCrowdfundingContract(await approvedContract.getAddress())
+
+            // Try to mint more than cap
+            await expect(
+                tokenContract.connect(approvedContract).mint(
+                    await recipient.getAddress(),
+                    cap + BigInt(1)
+                )
+            ).to.be.revertedWithCustomError(tokenContract, "ERC20ExceededCap")
+        })
+
+        it("Should allow minting up to the cap", async () => {
+            const { tokenContract, accounts } = await setupFixture()
+            const approvedContract = accounts[1]
+            const recipient = accounts[2]
+            const cap = await tokenContract.cap()
+
+            // Add approved contract
+            await tokenContract.addCrowdfundingContract(await approvedContract.getAddress())
+
+            // Mint exactly the cap
+            await tokenContract.connect(approvedContract).mint(
+                await recipient.getAddress(),
+                cap
+            )
+
+            expect(await tokenContract.balanceOf(await recipient.getAddress())).to.equal(cap)
+            expect(await tokenContract.totalSupply()).to.equal(cap)
+        })
+    })
+
+    describe("Edge Cases", () => {
+        it("Should handle multiple contract additions and removals", async () => {
+            const { tokenContract, accounts } = await setupFixture()
+            const contract1 = await accounts[1].getAddress()
+            const contract2 = await accounts[2].getAddress()
+            const contract3 = await accounts[3].getAddress()
+
+            // Add multiple contracts
+            await tokenContract.addCrowdfundingContract(contract1)
+            await tokenContract.addCrowdfundingContract(contract2)
+            await tokenContract.addCrowdfundingContract(contract3)
+
+            expect(await tokenContract.crowdfundingContracts(contract1)).to.be.true
+            expect(await tokenContract.crowdfundingContracts(contract2)).to.be.true
+            expect(await tokenContract.crowdfundingContracts(contract3)).to.be.true
+
+            // Remove one
+            await tokenContract.removeCrowdfundingContract(contract2)
+            expect(await tokenContract.crowdfundingContracts(contract2)).to.be.false
+            expect(await tokenContract.crowdfundingContracts(contract1)).to.be.true
+            expect(await tokenContract.crowdfundingContracts(contract3)).to.be.true
         })
     })
 })
