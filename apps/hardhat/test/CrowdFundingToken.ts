@@ -1,61 +1,57 @@
-import { expect } from "chai"
-import { deployments, ethers, getNamedAccounts } from "hardhat"
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 
 describe("CrowdFundingToken", () => {
-    const setupFixture = deployments.createFixture(async () => {
-        await deployments.fixture()
-        const signers = await getNamedAccounts()
+    const setupFixture = async () => {
+        const accounts = await ethers.getSigners();
+        const [deployer, ...otherAccounts] = accounts;
 
         // Deploy token contract
-        const tokenContract = await ethers.deployContract(
-            "CrowdFundingToken",
-            [],
-            await ethers.getSigner(signers.deployer)
-        )
+        const TokenFactory = await ethers.getContractFactory("CrowdFundingToken");
+        const tokenContract = await TokenFactory.deploy();
+        await tokenContract.waitForDeployment();
 
         // Deploy implementation for factory setup
-        const crowdFundingImplementation = await ethers.deployContract(
-            "CrowdFunding",
-            [],
-            await ethers.getSigner(signers.deployer)
-        )
+        const CrowdFundingImplementation = await ethers.getContractFactory("CrowdFunding");
+        const crowdFundingImplementation = await CrowdFundingImplementation.deploy();
+        await crowdFundingImplementation.waitForDeployment();
 
         // Deploy factory contract
-        const factoryContract = await ethers.deployContract(
-            "CrowdFundingFactory",
-            [await crowdFundingImplementation.getAddress(), await tokenContract.getAddress()],
-            await ethers.getSigner(signers.deployer)
-        )
-
-        const accounts = await ethers.getSigners()
+        const FactoryFactory = await ethers.getContractFactory("CrowdFundingFactory");
+        const factoryContract = await FactoryFactory.deploy(
+            await crowdFundingImplementation.getAddress(),
+            await tokenContract.getAddress()
+        );
+        await factoryContract.waitForDeployment();
 
         return {
             tokenContract,
             factoryContract,
             tokenAddress: await tokenContract.getAddress(),
             factoryAddress: await factoryContract.getAddress(),
-            deployer: signers.deployer,
+            deployer: deployer.address,
             accounts
-        }
-    })
+        };
+    };
 
     describe("Deployment", () => {
         it("Should deploy with correct name and symbol", async () => {
-            const { tokenContract } = await setupFixture()
+            const { tokenContract } = await loadFixture(setupFixture);
 
-            expect(await tokenContract.name()).to.equal("Donation Token")
-            expect(await tokenContract.symbol()).to.equal("DNTN")
-        })
+            expect(await tokenContract.name()).to.equal("MWG Donation Token");
+            expect(await tokenContract.symbol()).to.equal("MWG-DT");
+        });
 
         it("Should set correct initial owner", async () => {
-            const { tokenContract, deployer } = await setupFixture()
+            const { tokenContract, deployer } = await loadFixture(setupFixture)
 
             expect(await tokenContract.owner()).to.equal(deployer)
         })
 
         it("Should have correct token cap (1 billion)", async () => {
-            const { tokenContract } = await setupFixture()
+            const { tokenContract } = await loadFixture(setupFixture)
             const expectedCap = ethers.parseEther("1000000000") // 1 billion
 
             expect(await tokenContract.cap()).to.equal(expectedCap)
@@ -64,7 +60,7 @@ describe("CrowdFundingToken", () => {
 
     describe("Factory Setup", () => {
         it("Should set factory address and transfer ownership", async () => {
-            const { tokenContract, factoryAddress, deployer } = await setupFixture()
+            const { tokenContract, factoryAddress, deployer } = await loadFixture(setupFixture)
 
             await expect(
                 tokenContract.connect(await ethers.getSigner(deployer)).setFactoryAndTransferOwnership(factoryAddress)
@@ -76,7 +72,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if setting zero address as factory", async () => {
-            const { tokenContract } = await setupFixture()
+            const { tokenContract } = await loadFixture(setupFixture)
 
             await expect(
                 tokenContract.setFactoryAndTransferOwnership(ethers.ZeroAddress)
@@ -84,7 +80,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if non-owner tries to set factory", async () => {
-            const { tokenContract, factoryAddress, accounts } = await setupFixture()
+            const { tokenContract, factoryAddress, accounts } = await loadFixture(setupFixture)
 
             await expect(
                 tokenContract.connect(accounts[1]).setFactoryAndTransferOwnership(factoryAddress)
@@ -94,7 +90,7 @@ describe("CrowdFundingToken", () => {
 
     describe("Crowdfunding Contract Management", () => {
         it("Should allow owner to add crowdfunding contract", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const newContractAddress = await accounts[1].getAddress()
 
             await expect(
@@ -106,7 +102,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if adding zero address", async () => {
-            const { tokenContract } = await setupFixture()
+            const { tokenContract } = await loadFixture(setupFixture)
 
             await expect(
                 tokenContract.addCrowdfundingContract(ethers.ZeroAddress)
@@ -114,7 +110,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should allow owner to remove crowdfunding contract", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const contractAddress = await accounts[1].getAddress()
 
             // Add first
@@ -131,7 +127,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if non-owner tries to add crowdfunding contract", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const newContractAddress = await accounts[1].getAddress()
 
             await expect(
@@ -140,7 +136,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if non-owner tries to remove crowdfunding contract", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const contractAddress = await accounts[1].getAddress()
 
             await expect(
@@ -151,7 +147,7 @@ describe("CrowdFundingToken", () => {
 
     describe("Token Operations", () => {
         it("Should allow approved contract to mint tokens", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const approvedContract = accounts[1]
             const recipient = accounts[2]
             const amount = ethers.parseEther("100")
@@ -169,7 +165,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if non-approved contract tries to mint", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const amount = ethers.parseEther("100")
 
             await expect(
@@ -178,7 +174,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should allow approved contract to burn tokens", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const approvedContract = accounts[1]
             const amount = ethers.parseEther("100")
 
@@ -198,7 +194,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should revert if non-approved contract tries to burn", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const amount = ethers.parseEther("100")
 
             await expect(
@@ -207,7 +203,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should enforce token cap when minting", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const approvedContract = accounts[1]
             const recipient = accounts[2]
             const cap = await tokenContract.cap()
@@ -225,7 +221,7 @@ describe("CrowdFundingToken", () => {
         })
 
         it("Should allow minting up to the cap", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const approvedContract = accounts[1]
             const recipient = accounts[2]
             const cap = await tokenContract.cap()
@@ -246,7 +242,7 @@ describe("CrowdFundingToken", () => {
 
     describe("Edge Cases", () => {
         it("Should handle multiple contract additions and removals", async () => {
-            const { tokenContract, accounts } = await setupFixture()
+            const { tokenContract, accounts } = await loadFixture(setupFixture)
             const contract1 = await accounts[1].getAddress()
             const contract2 = await accounts[2].getAddress()
             const contract3 = await accounts[3].getAddress()

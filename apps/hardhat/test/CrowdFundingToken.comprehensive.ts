@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { CrowdFundingToken } from "../typechain-types";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("CrowdFundingToken - Comprehensive Tests", () => {
@@ -30,8 +29,8 @@ describe("CrowdFundingToken - Comprehensive Tests", () => {
         it("Should deploy with correct name and symbol", async () => {
             const { token } = await loadFixture(deployTokenFixture);
 
-            expect(await token.name()).to.equal("Donation Token");
-            expect(await token.symbol()).to.equal("DNTN");
+            expect(await token.name()).to.equal("MWG Donation Token");
+            expect(await token.symbol()).to.equal("MWG-DT");
         });
 
         it("Should deploy with 18 decimals", async () => {

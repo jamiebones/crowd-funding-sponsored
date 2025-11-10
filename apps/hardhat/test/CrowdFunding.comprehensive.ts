@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { CrowdFundingFactory, CrowdFundingToken, CrowdFunding } from "../typechain-types";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("CrowdFunding - Comprehensive Tests", () => {
@@ -60,7 +59,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
         const receipt = await tx.wait();
 
         // Extract campaign address from event
-        const event = receipt?.logs.find(log => {
+        const event = receipt?.logs.find((log: any) => {
             try {
                 const parsed = factory.interface.parseLog(log as any);
                 return parsed?.name === "NewCrowdFundingContractCreated";
@@ -148,12 +147,6 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             const { campaign } = await loadFixture(deployCampaignFixture);
 
             expect(await campaign.contractBalance()).to.equal(0);
-        });
-
-        it("Should not be paused initially", async () => {
-            const { campaign } = await loadFixture(deployCampaignFixture);
-
-            expect(await campaign.paused()).to.equal(false);
         });
     });
 
@@ -244,11 +237,10 @@ describe("CrowdFunding - Comprehensive Tests", () => {
         it("Should revert donation after campaign ended manually", async () => {
             const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
 
-            // Fast forward past duration
-            const [, duration] = await campaign.getFundingDetails();
-            await time.increaseTo(Number(duration) + 1);
+            // Donate to meet goal
+            await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("10") });
 
-            // End campaign
+            // Owner ends campaign early
             await campaign.connect(campaignOwner).endCampaign();
 
             await expect(
@@ -261,6 +253,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await expect(
                 campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") })
@@ -279,6 +272,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             // Create and withdraw 3 milestones
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
+            await campaign.endCampaign();
             await campaign.connect(campaignOwner).withdrawMilestone();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone2");
@@ -295,16 +289,6 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             await expect(
                 campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") })
             ).to.be.revertedWithCustomError(campaign, "CamPaignEndedErrorNoLongerAcceptingDonations");
-        });
-
-        it("Should revert donation when paused", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") })
-            ).to.be.revertedWithCustomError(campaign, "EnforcedPause");
         });
 
         it("Should accept large donations", async () => {
@@ -399,6 +383,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             // Fast forward past duration
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // Create and approve 3 milestones
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -418,16 +403,6 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             await expect(
                 campaign.connect(campaignOwner).createNewMilestone("milestone4")
             ).to.be.revertedWithCustomError(campaign, "TheMaximumMilestoneHaveBeenCreated");
-        });
-
-        it("Should revert when paused", async () => {
-            const { campaign, campaignOwner } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(campaignOwner).createNewMilestone("milestone1")
-            ).to.be.revertedWithCustomError(campaign, "EnforcedPause");
         });
     });
 
@@ -562,6 +537,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone(); // Auto-approves first milestone
@@ -571,33 +547,26 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             ).to.be.revertedWithCustomError(campaign, "CanNotVoteOnMileStone");
         });
 
-        it("Should revert when campaign has ended", async () => {
+        it("Should allow voting after campaign ends if milestone voting period is active", async () => {
             const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
 
             await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("10") });
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
-            await campaign.connect(campaignOwner).endCampaign();
-
+            // Create and withdraw first milestone
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
+            await campaign.connect(campaignOwner).withdrawMilestone();
 
+            // Create second milestone and vote on it even though campaign has ended
+            await campaign.connect(campaignOwner).createNewMilestone("milestone2");
+
+            // Voting should work for milestone 2 even though campaign has ended
             await expect(
                 campaign.connect(donor1).voteOnMilestone(true)
-            ).to.be.revertedWithCustomError(campaign, "CampaignHasEnded");
-        });
-
-        it("Should revert when paused", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") });
-            await campaign.connect(campaignOwner).createNewMilestone("milestone1");
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(donor1).voteOnMilestone(true)
-            ).to.be.revertedWithCustomError(campaign, "EnforcedPause");
+            ).to.not.be.reverted;
         });
     });
 
@@ -609,6 +578,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
 
@@ -628,6 +598,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
 
@@ -642,20 +613,22 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             expect(await campaign.contractBalance()).to.equal(donationAmount - expectedWithdrawal);
         });
 
-        it("Should revert if funding goal not met", async () => {
+        it("Should allow withdrawal even if funding goal not met", async () => {
             const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
 
-            // Donate less than target
+            // Donate less than target (target is 10 ETH)
             await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("5") });
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
 
+            // Should succeed - funding goal is not required for withdrawals
             await expect(
                 campaign.connect(campaignOwner).withdrawMilestone()
-            ).to.be.revertedWithCustomError(campaign, "FundingGoalNotMet");
+            ).to.not.be.reverted;
         });
 
         it("Should revert if campaign still running", async () => {
@@ -676,6 +649,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
 
@@ -694,6 +668,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // First milestone
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -722,6 +697,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -745,6 +721,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -766,6 +743,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -794,6 +772,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // First milestone
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -824,6 +803,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -842,6 +822,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // 3 milestones
             for (let i = 1; i <= 3; i++) {
@@ -858,22 +839,6 @@ describe("CrowdFunding - Comprehensive Tests", () => {
                 campaign.connect(campaignOwner).withdrawMilestone()
             ).to.be.revertedWithCustomError(campaign, "MaximumNumberofWithdrawalExceeded");
         });
-
-        it("Should revert when paused", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("10") });
-
-            const [, duration] = await campaign.getFundingDetails();
-            await time.increaseTo(Number(duration) + 1);
-
-            await campaign.connect(campaignOwner).createNewMilestone("milestone1");
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(campaignOwner).withdrawMilestone()
-            ).to.be.revertedWithCustomError(campaign, "EnforcedPause");
-        });
     });
 
     describe("Part 7: Donor Withdrawals", () => {
@@ -884,7 +849,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             await campaign.connect(donor1).giveDonationToCause({ value: donationAmount });
 
             const taxRate = await campaign.getWithdrawalTaxRate();
-            const expectedTax = (donationAmount * taxRate) / 100n;
+            const expectedTax = (donationAmount * BigInt(taxRate)) / 100n;
             const expectedReturn = donationAmount - expectedTax;
 
             const donorBalanceBefore = await ethers.provider.getBalance(donor1.address);
@@ -904,6 +869,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -931,6 +897,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // First milestone: owner withdraws 1/3
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -972,7 +939,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             const factoryBalanceAfter = await ethers.provider.getBalance(await factory.getAddress());
 
             const taxRate = await campaign.getWithdrawalTaxRate();
-            const expectedTax = (donationAmount * taxRate) / 100n;
+            const expectedTax = (donationAmount * BigInt(taxRate)) / 100n;
 
             expect(factoryBalanceAfter - factoryBalanceBefore).to.equal(expectedTax);
         });
@@ -1006,6 +973,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // Approve 3 milestones
             for (let i = 1; i <= 3; i++) {
@@ -1020,75 +988,6 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             await expect(
                 campaign.connect(donor1).retrieveDonatedAmount()
             ).to.be.revertedWithCustomError(campaign, "CantWithdrawFundsCampaignEnded");
-        });
-
-        it("Should revert when paused", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") });
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(donor1).retrieveDonatedAmount()
-            ).to.be.revertedWithCustomError(campaign, "EnforcedPause");
-        });
-    });
-
-    describe("Part 8: Pausability", () => {
-        it("Should allow owner to pause contract", async () => {
-            const { campaign, campaignOwner } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-
-            expect(await campaign.paused()).to.equal(true);
-        });
-
-        it("Should allow owner to unpause contract", async () => {
-            const { campaign, campaignOwner } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-            await campaign.connect(campaignOwner).unpause();
-
-            expect(await campaign.paused()).to.equal(false);
-        });
-
-        it("Should revert when non-owner tries to pause", async () => {
-            const { campaign, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await expect(
-                campaign.connect(donor1).pause()
-            ).to.be.revertedWithCustomError(campaign, "YouAreNotTheOwnerOfTheCampaign");
-        });
-
-        it("Should revert when non-owner tries to unpause", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(donor1).unpause()
-            ).to.be.revertedWithCustomError(campaign, "YouAreNotTheOwnerOfTheCampaign");
-        });
-
-        it("Should block donations when paused", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-
-            await expect(
-                campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") })
-            ).to.be.revertedWithCustomError(campaign, "EnforcedPause");
-        });
-
-        it("Should allow donations after unpause", async () => {
-            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
-
-            await campaign.connect(campaignOwner).pause();
-            await campaign.connect(campaignOwner).unpause();
-
-            await expect(
-                campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("1") })
-            ).to.not.be.reverted;
         });
     });
 
@@ -1148,8 +1047,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
-
-            await campaign.connect(campaignOwner).endCampaign();
+            await campaign.endCampaign();
 
             await expect(
                 campaign.connect(campaignOwner).setVotingPeriod(21)
@@ -1171,12 +1069,18 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             expect(await campaign.campaignEnded()).to.equal(true);
         });
 
-        it("Should revert when ending campaign before duration", async () => {
-            const { campaign, campaignOwner } = await loadFixture(deployCampaignFixture);
+        it("Should allow owner to end campaign early at any time", async () => {
+            const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
 
+            // Should fail when non-owner tries to end early
+            await expect(
+                campaign.connect(donor1).endCampaign()
+            ).to.be.revertedWith("Only owner can end campaign early");
+
+            // Should succeed when owner ends early even without meeting goal
             await expect(
                 campaign.connect(campaignOwner).endCampaign()
-            ).to.be.revertedWith("Campaign still active");
+            ).to.emit(campaign, "CampaignEnded");
         });
 
         it("Should revert when ending already ended campaign", async () => {
@@ -1184,8 +1088,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
-
-            await campaign.connect(campaignOwner).endCampaign();
+            await campaign.endCampaign();
 
             await expect(
                 campaign.connect(campaignOwner).endCampaign()
@@ -1332,6 +1235,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -1361,6 +1265,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // First milestone
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -1397,6 +1302,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // Create milestone - donor1 can't vote anymore
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -1460,6 +1366,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
             await campaign.connect(campaignOwner).withdrawMilestone();
@@ -1484,6 +1391,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             // First withdrawal (1/3)
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
@@ -1508,6 +1416,11 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
 
+            // Campaign ended event
+            await expect(
+                campaign.endCampaign()
+            ).to.emit(campaign, "CampaignEnded");
+
             // Milestone created event
             await expect(
                 campaign.connect(campaignOwner).createNewMilestone("milestone1")
@@ -1523,11 +1436,6 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             await expect(
                 campaign.connect(donor1).voteOnMilestone(true)
             ).to.emit(campaign, "VotedOnMilestone");
-
-            // Campaign ended event
-            await expect(
-                campaign.connect(campaignOwner).endCampaign()
-            ).to.emit(campaign, "CampaignEnded");
         });
 
         it("Should handle maximum gas scenarios", async () => {
@@ -1542,6 +1450,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             const [, duration] = await campaign.getFundingDetails();
             await time.increaseTo(Number(duration) + 1);
+            await campaign.endCampaign();
 
             await campaign.connect(campaignOwner).createNewMilestone("milestone1");
 

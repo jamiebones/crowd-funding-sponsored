@@ -1,0 +1,3 @@
+# Deployment files directory
+# This directory stores network-specific deployment information
+# Files are gitignored for security (may contain sensitive addresses)

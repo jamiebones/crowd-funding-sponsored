@@ -14,7 +14,7 @@ contract CrowdFundingToken is ERC20, ERC20Burnable, ERC20Capped, Ownable {
     event CrowdfundingContractRemoved(address indexed contractAddress);
 
     constructor() 
-        ERC20("Donation Token", "DNTN") 
+        ERC20("MWG Donation Token", "MWG-DT") 
         ERC20Capped(1_000_000_000 * 10**18) // 1 billion token cap
         Ownable(msg.sender) 
     {}

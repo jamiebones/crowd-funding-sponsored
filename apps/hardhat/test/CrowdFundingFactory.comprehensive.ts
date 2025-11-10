@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { CrowdFundingFactory, CrowdFundingToken, CrowdFunding } from "../typechain-types";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("CrowdFundingFactory - Comprehensive Tests", () => {
@@ -125,7 +124,7 @@ describe("CrowdFundingFactory - Comprehensive Tests", () => {
             );
 
             const receipt = await tx.wait();
-            const event = receipt?.logs.find(log => {
+            const event = receipt?.logs.find((log: any) => {
                 try {
                     return factory.interface.parseLog(log as any)?.name === "NewCrowdFundingContractCreated";
                 } catch { return false; }
@@ -148,7 +147,7 @@ describe("CrowdFundingFactory - Comprehensive Tests", () => {
             );
 
             const receipt = await tx.wait();
-            const event = receipt?.logs.find(log => {
+            const event = receipt?.logs.find((log: any) => {
                 try {
                     return factory.interface.parseLog(log as any)?.name === "NewCrowdFundingContractCreated";
                 } catch { return false; }

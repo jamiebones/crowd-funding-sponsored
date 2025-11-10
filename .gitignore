@@ -43,6 +43,12 @@ cache
 artifacts
 typechain-types
 
+# Deployment files (contains addresses, may contain sensitive data)
+apps/hardhat/deployments/*.json
+!apps/hardhat/deployments/.gitkeep
+apps/hardhat/exports/
+!apps/hardhat/exports/.gitkeep
+
 # Subgraph
 generated
 build
@@ -50,3 +56,5 @@ build
 # IDE
 .idea
 .vscode 
+
+su

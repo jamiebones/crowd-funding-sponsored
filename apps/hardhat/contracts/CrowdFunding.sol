@@ -3,16 +3,14 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./CrowdFundingFactory.sol";
 import "./CrowdFundingToken.sol";
-import "hardhat/console.sol";
 
 /**
  * @title CrowdFunding
  * @dev Main contract for crowdfunding campaigns
  */
-contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
+contract CrowdFunding is Initializable, ReentrancyGuard {
     // Structs
     struct Milestone {
         string milestoneCID;
@@ -22,8 +20,8 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         uint256 supportVote;
         uint256 againstVote;
         mapping(address => bool) hasVoted;
-        mapping(address => uint256) voterSnapshot; // SECURITY: Snapshot of donor balances at milestone creation
-        uint256 totalDonationsSnapshot; // Total donations at milestone creation time
+        mapping(address => uint256) voterSnapshot; // Snapshot of voter's donation at time of voting
+        mapping(address => bool) voteDirection; // true = support, false = against
     }
 
     // Errors
@@ -161,12 +159,11 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         address _donationTokenAddress,
         address _owner
     ) external initializer {
-        // SECURITY: Only factory can initialize to prevent front-running
         require(msg.sender == _factoryAddress, "Only factory can initialize");
         require(_factoryAddress != address(0), "Invalid factory address");
         require(_donationTokenAddress != address(0), "Invalid token address");
         require(_owner != address(0), "Invalid owner address");
-        require(_amount >= 0.01 ether, "Minimum goal is 0.01 ETH"); // Prevent spam campaigns
+        require(_amount >= 0.01 ether, "Minimum goal is 0.01 ETH"); 
         require(_duration >= 1 days && _duration <= 365 days, "Duration must be 1-365 days");
         
         contractDetailsId = _contractDetailsId;
@@ -184,8 +181,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
 
     /// @notice Allows users to donate funds to the campaign
     /// @dev Emits DonationReceived event on successful donation
-    /// @custom:security non-reentrant
-    function giveDonationToCause() external payable nonReentrant whenNotPaused {
+    function giveDonationToCause() external payable nonReentrant {
         // Check campaign state
         if (campaignEnded) {
             revert CamPaignEndedErrorNoLongerAcceptingDonations();
@@ -208,13 +204,9 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         if (donors[msg.sender] == 0) {
             numberOfDonors++;
         }
-
-        // Check for overflow before updating amounts
         donors[msg.sender] += donationAmount;
         amountDonated += donationAmount;
-
         donationToken.mint(msg.sender, donationAmount);
-
         emit DonationReceived(
             msg.sender,
             donationAmount,
@@ -225,7 +217,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
 
     function createNewMilestone(
         string memory milestoneCID
-    ) external onlycampaignOwner(msg.sender) nonReentrant whenNotPaused {
+    ) external onlycampaignOwner(msg.sender) nonReentrant {
         require(bytes(milestoneCID).length > 0, "Empty milestone CID");
         // Check milestone constraints
         if (milestones[milestoneCounter].status == MilestoneStatus.Pending) {
@@ -244,9 +236,6 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         newMilestone.votingPeriod = block.timestamp + (votingPeriodDays * 1 days);
         newMilestone.supportVote = 0;
         newMilestone.againstVote = 0;
-        
-        // SECURITY FIX: Take snapshot of total donations at milestone creation
-        newMilestone.totalDonationsSnapshot = amountDonated;
 
         // Update counter
         milestoneCounter = newMilestoneId;
@@ -261,7 +250,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
 
     /// @notice Allows donors to withdraw their donations with a withdrawal fee
     /// @dev Implements checks-effects-interactions pattern and includes withdrawal penalties based on milestone progress
-    function retrieveDonatedAmount() external nonReentrant whenNotPaused {
+    function retrieveDonatedAmount() external nonReentrant {
         // Cache state variables
         uint256 userDonation = donors[msg.sender];
         uint256 currentApprovedMilestones = approvedMilestone;
@@ -275,14 +264,38 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
             revert CantWithdrawFundsCampaignEnded(msg.sender);
         }
 
-        // Calculate withdrawal amount based on milestone progress
+       // If there's a pending milestone and donor has voted, remove their vote from tallies
+        if (milestoneCounter > 0) {
+            Milestone storage currentMilestone = milestones[milestoneCounter];
+            if (currentMilestone.status == MilestoneStatus.Pending && currentMilestone.hasVoted[msg.sender]) {
+                uint256 voteWeight = currentMilestone.voterSnapshot[msg.sender];
+                
+                // Subtract their vote weight from the appropriate tally based on vote direction
+                if (currentMilestone.voteDirection[msg.sender]) {
+                    // They voted in support
+                    currentMilestone.supportVote -= voteWeight;
+                } else {
+                    // They voted against
+                    currentMilestone.againstVote -= voteWeight;
+                }
+                
+                //Clear their vote status
+                currentMilestone.hasVoted[msg.sender] = false;
+                currentMilestone.voterSnapshot[msg.sender] = 0;
+                delete currentMilestone.voteDirection[msg.sender];
+            }
+        }
+
+        //calculate withdrawal amount based on milestone progress
         uint256 donationDivider;
         if (currentApprovedMilestones == 0) {
-            donationDivider = baseNumber; // 100% return
+            donationDivider = baseNumber; //100% return
         } else if (currentApprovedMilestones == 1) {
-            donationDivider = (2 * baseNumber) / 3; // 66.67% return
+            //66.67% return
+            donationDivider = (2 * baseNumber) / 3; 
         } else if (currentApprovedMilestones == 2) {
-            donationDivider = baseNumber / 3; // 33.33% return
+            // 33.33% return
+            donationDivider = baseNumber / 3; 
         } else {
             revert("Invalid milestone state");
         }
@@ -292,11 +305,13 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         uint256 taxAmount = (withdrawalBase * withdrawalTaxRate) / 100;
         uint256 userAmount = withdrawalBase - taxAmount;
 
-        // Verify contract has sufficient balance for both transfers
+        //Verify contract has sufficient balance for both transfers
+        
         require(
             contractBal >= (userAmount + taxAmount),
             "Insufficient contract balance"
         );
+        
         require(
             factoryContractAddress != address(0),
             "Invalid factory address"
@@ -307,22 +322,20 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         numberOfDonors--;
         amountRecalledByDonor += userDonation; // Track actual donation amount
         
-        // SECURITY FIX: Decrease total donations when donor withdraws
+        // Decrease total donations when donor withdraws
         // This prevents accounting issues and reflects actual available funds
         amountDonated -= userDonation;
-
-        console.log("Tax amount", taxAmount);
 
         // Burn tokens before transfer
         donationToken.burnTokens(userDonation, msg.sender);
 
-        // Transfer user amount first
+        //Transfer user amount first
         (bool successUser, ) = payable(msg.sender).call{value: userAmount}("");
         if (!successUser) {
             revert WithdrawalFailed(userAmount);
         }
 
-        // Only attempt tax transfer if there's a tax amount
+        //Only attempt tax transfer if there's a tax amount
         if (taxAmount > 0) {
             (bool successTax, ) = payable(factoryContractAddress).call{
                 value: taxAmount
@@ -344,12 +357,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
     /// @notice Allows donors to vote on pending milestones
     /// @dev Votes are weighted by donation amount
     /// @param support True for supporting the milestone, false for opposing
-    function voteOnMilestone(bool support) external nonReentrant whenNotPaused {
-        // Validate campaign state
-        if (campaignEnded) {
-            revert CampaignHasEnded();
-        }
-
+    function voteOnMilestone(bool support) external nonReentrant {
         // Validate milestone exists
         if (milestoneCounter == 0) {
             revert("No milestone exists");
@@ -367,7 +375,6 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
             revert MileStoneVotingHasElapsed();
         }
 
-        // Cache donor amount for gas optimization and multiple uses
         uint256 weight = donors[msg.sender];
         if (weight == 0) {
             revert YouDidNotDonateToThisCampaign();
@@ -378,9 +385,10 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
             revert YouHaveVotedForThisMilestoneAlready(msg.sender);
         }
 
-        // SECURITY FIX: Snapshot voter's balance at time of voting
+        //Snapshot voter's balance at time of voting
         // This prevents vote weight from changing after voting
         currentMilestone.voterSnapshot[msg.sender] = weight;
+        currentMilestone.voteDirection[msg.sender] = support; // Track vote direction
         
         // Record vote
         currentMilestone.hasVoted[msg.sender] = true;
@@ -405,10 +413,9 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
     function withdrawMilestone()
         external
         nonReentrant
-        whenNotPaused
         onlycampaignOwner(msg.sender)
     {
-        // Cache state variables to save gas
+
         uint256 currentWithdrawals = numberOfWithdrawal;
         uint256 currentBalance = address(this).balance;
         uint256 currentMilestoneCount = milestoneCounter;
@@ -418,13 +425,10 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         if (currentWithdrawals >= 3) {
             revert MaximumNumberofWithdrawalExceeded();
         }
-        if (block.timestamp < campaignDuration) {
+        
+        // Allow withdrawal if campaign has ended (either by duration or owner ending early)
+        if (!campaignEnded) {
             revert CampaignStillRunning();
-        }
-
-        // Validate minimum funding goal is met
-        if (amountDonated < targetAmount) {
-            revert FundingGoalNotMet();
         }
 
         // Handle first milestone withdrawal (special case)
@@ -515,8 +519,6 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
             uint256 netDonations = amountDonated - amountRecalledByDonor;
             taxAmount = netDonations / 100; // 1% tax on net donations
             withdrawalAmount = currentBalance - taxAmount;
-
-            // SECURITY FIX: Update state BEFORE external calls
             campaignEnded = true;
             emit CampaignEnded(address(this), block.timestamp);
 
@@ -541,25 +543,25 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         }
     }
 
-    /// @notice Ends the campaign when duration expires
-    /// @dev Can be called by anyone after campaign duration ends
+    /// @notice Ends the campaign when duration expires or owner ends early
+    /// @dev Can be called by anyone after duration ends, or by owner at any time
     function endCampaign() external {
-        require(block.timestamp >= campaignDuration, "Campaign still active");
         if (campaignEnded) {
             revert CampaignAlreadyEnded();
         }
+        
+        // Allow anyone to end after duration expires
+        if (block.timestamp >= campaignDuration) {
+            campaignEnded = true;
+            emit CampaignEnded(address(this), block.timestamp);
+            return;
+        }
+        
+        // Allow owner to end early at any time
+        require(msg.sender == campaignOwner, "Only owner can end campaign early");
+        
         campaignEnded = true;
         emit CampaignEnded(address(this), block.timestamp);
-    }
-
-    /// @notice Pauses the contract (owner only)
-    function pause() external onlycampaignOwner(msg.sender) {
-        _pause();
-    }
-
-    /// @notice Unpauses the contract (owner only)
-    function unpause() external onlycampaignOwner(msg.sender) {
-        _unpause();
     }
 
     /// @notice Updates voting period (owner only, before campaign ends)
@@ -576,7 +578,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard, Pausable {
         if (newPeriod <= campaignDuration) {
             revert NewDurationSmallerThanPreviousDuration();
         }
-        // SECURITY FIX: Limit maximum extension to prevent indefinite locking
+        // Limit maximum extension to prevent indefinite locking
         uint256 maxAllowedDuration = block.timestamp + 365 days;
         require(newPeriod <= maxAllowedDuration, "Cannot extend beyond 1 year from now");
         campaignDuration = newPeriod;

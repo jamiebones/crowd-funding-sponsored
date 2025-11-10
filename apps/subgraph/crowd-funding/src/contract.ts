@@ -1,7 +1,8 @@
 import { BigInt, Bytes, dataSource, DataSourceContext, DataSourceTemplate, json, log } from "@graphprotocol/graph-ts";
 import {
     NewCrowdFundingContractCreated as NewCrowdFundingContractCreatedEvent,
-    FundingFeeUpdated as FundingFeeUpdatedEvent
+    FundingFeeUpdated as FundingFeeUpdatedEvent,
+    FundsWithdrawn as FundsWithdrawnEvent
 } from "../generated/CrowdFundingFactory/CrowdFundingFactory";
 
 
@@ -17,9 +18,11 @@ import { Campaign as CampaignTemplate } from "../generated/templates";
 
 import {
     MilestoneCreated as MilestoneCreatedEvent,
-    MilestoneWithdrawal as MilestoneWithdrawalEvent, UserDonatedToProject as UserDonatedToProjectEvent,
-    DonationRetrievedByDonor as DonationRetrievedByDonorEvent,
-    CampaignEnded as CampaignEndedEvent, MileStoneStatusUpdated as MilestoneStatusChangedEvent,
+    MilestoneWithdrawn as MilestoneWithdrawnEvent,
+    DonationReceived as DonationReceivedEvent,
+    DonationWithdrawn as DonationWithdrawnEvent,
+    CampaignEnded as CampaignEndedEvent,
+    MilestoneStatusUpdated as MilestoneStatusUpdatedEvent,
     VotedOnMilestone as VotedOnMilestoneEvent,
 } from "../generated/templates/Campaign/CrowdFundingContract";
 
@@ -72,11 +75,6 @@ export function handleNewCrowdFundingContractCreated(
         'Amount Sought: ' + newCampaign.amountSought.toString()
     ]);
 
-    let hash = newCampaign.campaignCID;
-    let context = new DataSourceContext();
-    context.setBytes(CAMPAIGN_ID_KEY, newCampaign.id);
-    DataSourceTemplate.createWithContext("ArweaveContentCampaign", [hash], context);
-
     CampaignTemplate.create(event.params.contractAddress);
 
     if (!stats) {
@@ -110,7 +108,7 @@ export function handleNewCrowdFundingContractCreated(
 }
 
 
-export function handleUserDonatedToProject(event: UserDonatedToProjectEvent): void {
+export function handleDonationReceived(event: DonationReceivedEvent): void {
     log.info('Funds Donated Event: {}', [
         'Donor: ' + event.params.donor.toHexString(),
         'Project: ' + event.params.project.toHexString(),
@@ -185,7 +183,7 @@ export function handleUserDonatedToProject(event: UserDonatedToProjectEvent): vo
     }
 }
 
-export function handleUserVotedOnMileStone(event: VotedOnMilestoneEvent): void {
+export function handleVotedOnMilestone(event: VotedOnMilestoneEvent): void {
     log.info('User Voted on Milestone Event: {}', [
         'Project: ' + event.params.project.toHexString(),
         'Voter: ' + event.params.voter.toHexString(),
@@ -197,7 +195,9 @@ export function handleUserVotedOnMileStone(event: VotedOnMilestoneEvent): void {
 
     let vote = new Vote(Bytes.fromUTF8(event.params.project.toHexString() + event.params.voter.toHexString() + event.params.timestamp.toString()))
 
-    let milestone = Milestone.load(event.params.milestoneCID.toString())
+    // Convert milestoneCID to hex for lookup
+    let milestoneId = Bytes.fromUTF8(event.params.milestoneCID).toHexString()
+    let milestone = Milestone.load(milestoneId)
     let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()))
     if (!milestone) {
         log.warning('Vote Event for Non-Existent Milestone: {}', [
@@ -221,7 +221,7 @@ export function handleUserVotedOnMileStone(event: VotedOnMilestoneEvent): void {
         vote.project = campaign.id.toString();
     }
     vote.save();
-    
+
     log.info('Vote Recorded: {}', [
         'Vote ID: ' + vote.id.toHexString(),
         'Voter: ' + vote.voter,
@@ -232,7 +232,7 @@ export function handleUserVotedOnMileStone(event: VotedOnMilestoneEvent): void {
 
 }
 
-export function handleDonationRetrievedByDonor(event: DonationRetrievedByDonorEvent): void {
+export function handleDonationWithdrawn(event: DonationWithdrawnEvent): void {
     log.info("handles donation retrieval", ["donation retrieval started"])
     let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()));
     let stats = Statistic.load(STATS_ID);
@@ -273,19 +273,19 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
         'Transaction Hash: ' + event.transaction.hash.toHexString(),
         'From: ' + event.transaction.from.toHexString(),
         'To: ' + event.transaction.to!.toHexString(),
-        'Milestone CID: ' + event.params.milestoneCID.toString(),
+        'Milestone CID: ' + event.params.milestoneCID.toHexString(),
         'Period to Vote: ' + event.params.period.toString(),
-        'Date Created: ' + event.params.datecreated.toString()
+        'Date Created: ' + event.params.dateCreated.toString()
     ]);
 
-    const newMilestone = new Milestone(event.params.milestoneCID)
+    const newMilestone = new Milestone(event.params.milestoneCID.toHexString())
     const campaign = Campaign.load(Bytes.fromUTF8(event.transaction.to!.toHexString()));
     if (campaign) {
         newMilestone.campaign = campaign.id;
         newMilestone.status = MilestoneStatus.Pending;
-        newMilestone.milestoneCID = event.params.milestoneCID;
+        newMilestone.milestoneCID = event.params.milestoneCID.toHexString();
         newMilestone.periodToVote = event.params.period;
-        newMilestone.dateCreated = event.params.datecreated;
+        newMilestone.dateCreated = event.params.dateCreated;
         newMilestone.save();
         log.info('Milestone Recorded: {}', [
             'Milestone ID: ' + newMilestone.id,
@@ -301,11 +301,6 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
             'Campaign ID: ' + campaign.id.toHexString(),
             'Current Milestone ID: ' + newMilestone.id
         ]);
-
-        let hash = newMilestone.milestoneCID;
-        let context = new DataSourceContext();
-        context.setBytes(MILESTONE_ID_KEY, Bytes.fromUTF8(newMilestone.id));
-        DataSourceTemplate.createWithContext("ArweaveContentMilestone", [hash], context);
     } else {
         log.warning('Milestone Creation for Non-Existent Campaign: {}', [
             'Transaction To: ' + event.transaction.to!.toHexString()
@@ -314,7 +309,7 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
 }
 
 
-export function handleMilestoneStatusChanged(event: MilestoneStatusChangedEvent): void {
+export function handleMilestoneStatusUpdated(event: MilestoneStatusUpdatedEvent): void {
     log.info('Milestone Status Changed Event: {}', [
         'Project: ' + event.params.project.toHexString()
     ]);
@@ -336,7 +331,7 @@ export function handleMilestoneStatusChanged(event: MilestoneStatusChangedEvent)
     }
 }
 
-export function handleFundsWithdrawn(event: MilestoneWithdrawalEvent): void {
+export function handleMilestoneWithdrawn(event: MilestoneWithdrawnEvent): void {
     log.info('Funds Withdrawn Event: {}', [
         'Owner: ' + event.params.owner.toHexString(),
         'Amount: ' + event.params.amount.toString()
@@ -505,5 +500,15 @@ export function handleMilestoneContent(content: Bytes): void {
 
     milestoneContent.hash = hash;
     milestoneContent.save();
+}
+
+export function handleFundsWithdrawn(event: FundsWithdrawnEvent): void {
+    log.info('Factory Funds Withdrawn Event: {}', [
+        'Owner: ' + event.params.owner.toHexString(),
+        'Amount: ' + event.params.amount.toString()
+    ]);
+
+    // This event is from the factory contract when the owner withdraws accumulated tax fees
+    // You could track this in a FactoryStatistics entity if needed
 }
 
