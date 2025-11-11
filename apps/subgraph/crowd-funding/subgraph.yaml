@@ -1,4 +1,6 @@
-specVersion: 1.0.0
+specVersion: 1.2.0
+description: CrowdFunding platform with milestone-based funding and token rewards
+repository: https://github.com/jamiebones/crowd-funding-sponsored
 indexerHints:
   prune: auto
 features:
@@ -9,12 +11,10 @@ dataSources:
   - kind: ethereum/contract
     name: CrowdFundingFactory
     network: chapel
-    #network: mainnet //for local testing
     source:
-      address: "0x0Ac6Bb3095c62706D8EDd0B9185bCCFB16cDE117"
+      address: "0x9C413E92bf610Ccd0Cd044c3ba25876764AB8FDD"
       abi: CrowdFundingFactory
-      startBlock: 47606827 
-      #reorgThreshold: 500
+      startBlock: 72013931
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -34,8 +34,7 @@ dataSources:
 templates:
   - kind: ethereum/contract
     name: Campaign
-    network: chapel
-    #network: mainnet
+    network: bsc-testnet
     source:
       abi: CrowdFundingContract
     mapping:

@@ -286,8 +286,8 @@ async function main() {
         console.log("  Waiting 30 seconds for blockchain indexing...");
         await new Promise(resolve => setTimeout(resolve, 30000));
 
-        const explorerName = networkName.includes('bsc') ? 'BscScan' : 
-                            networkName.includes('polygon') ? 'PolygonScan' : 'Etherscan';
+        const explorerName = networkName.includes('bsc') ? 'BscScan' :
+            networkName.includes('polygon') ? 'PolygonScan' : 'Etherscan';
 
         // Verify CrowdFundingToken (no constructor args)
         try {

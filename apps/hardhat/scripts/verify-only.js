@@ -14,7 +14,7 @@ async function main() {
 
     // Load deployment info
     const deploymentFile = path.join(__dirname, '..', 'deployments', `${networkName}.json`);
-    
+
     if (!fs.existsSync(deploymentFile)) {
         throw new Error(`❌ Deployment file not found: ${deploymentFile}`);
     }
@@ -48,8 +48,8 @@ async function main() {
     console.log("  Waiting 30 seconds for blockchain indexing...");
     await new Promise(resolve => setTimeout(resolve, 30000));
 
-    const explorerName = networkName.includes('bsc') ? 'BscScan' : 
-                        networkName.includes('polygon') ? 'PolygonScan' : 'Etherscan';
+    const explorerName = networkName.includes('bsc') ? 'BscScan' :
+        networkName.includes('polygon') ? 'PolygonScan' : 'Etherscan';
 
     // Verify CrowdFundingToken (no constructor args)
     try {
@@ -115,11 +115,11 @@ async function main() {
     // Update deployment file with verification status
     deploymentInfo.verificationTimestamp = new Date().toISOString();
     fs.writeFileSync(deploymentFile, JSON.stringify(deploymentInfo, null, 2));
-    
+
     // Also update latest.json
     const latestFile = path.join(__dirname, '..', 'deployments', "latest.json");
     fs.writeFileSync(latestFile, JSON.stringify(deploymentInfo, null, 2));
-    
+
     console.log(`\n  ✅ Verification status updated in deployment files\n`);
 
     // ============================================

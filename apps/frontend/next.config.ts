@@ -1,15 +1,7 @@
 import type { NextConfig } from "next";
 
-
-const nextConfig = {
-  webpack: (config: NextConfig) => {
-    config.externals.push("pino-pretty", "lokijs", "encoding");
-    config.resolve.alias.canvas = false;
-    return config;
-  },
-  images: {
-    domains: ['arweave.net'],
-  },
+const nextConfig: NextConfig = {
+  // Explicitly empty config to avoid webpack/turbopack warnings
 };
 
 export default nextConfig;
