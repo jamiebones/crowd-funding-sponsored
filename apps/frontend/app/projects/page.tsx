@@ -12,6 +12,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { formatEther } from 'viem';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
+import { CampaignCardSkeleton } from '@/components/LoadingSkeletons';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -181,20 +182,7 @@ export default function ProjectsPage() {
         {loading && (
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
-              >
-                <div className="h-48 bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                <div className="p-6 space-y-4">
-                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
+              <CampaignCardSkeleton key={i} />
             ))}
           </div>
         )}

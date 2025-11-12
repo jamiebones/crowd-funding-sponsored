@@ -10,26 +10,35 @@ import { Toaster } from 'sonner';
 import { config } from '@/lib/wagmi';
 import { apolloClient } from '@/lib/apollo';
 import { ReactNode, useState } from 'react';
+import { ErrorBoundary } from './ErrorBoundary';
+import { SkipToContent } from './SkipToContent';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          theme={darkTheme({
-            accentColor: '#3b82f6',
-            accentColorForeground: 'white',
-            borderRadius: 'medium',
-          })}
-        >
-          <ApolloProvider client={apolloClient}>
-            {children}
-            <Toaster position="top-right" richColors />
-          </ApolloProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <>
+      <SkipToContent />
+      <ErrorBoundary>
+        <WagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            <RainbowKitProvider
+              theme={darkTheme({
+                accentColor: '#3b82f6',
+                accentColorForeground: 'white',
+                borderRadius: 'medium',
+              })}
+            >
+              <ApolloProvider client={apolloClient}>
+                <main id="main-content">
+                  {children}
+                </main>
+                <Toaster position="top-right" richColors />
+              </ApolloProvider>
+            </RainbowKitProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+      </ErrorBoundary>
+    </>
   );
 }

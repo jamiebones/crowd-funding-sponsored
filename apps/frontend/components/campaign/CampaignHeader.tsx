@@ -1,29 +1,44 @@
 import { Campaign } from '@/types/campaign';
 import { CATEGORIES } from '@/lib/constants';
-import { Calendar, User, ExternalLink } from 'lucide-react';
+import { Calendar, User, ExternalLink, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { useAccount } from 'wagmi';
 
 interface CampaignHeaderProps {
   campaign: Campaign;
 }
 
 export function CampaignHeader({ campaign }: CampaignHeaderProps) {
+  const { address: walletAddress } = useAccount();
   const category = CATEGORIES.find((c) => c.id === campaign.category);
   const createdDate = new Date(parseInt(campaign.dateCreated) * 1000);
+  const isOwner = walletAddress && campaign.owner.id.toLowerCase() === walletAddress.toLowerCase();
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-        <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400">
-          Home
-        </Link>
-        <span>/</span>
-        <Link href="/projects" className="hover:text-blue-600 dark:hover:text-blue-400">
-          Projects
-        </Link>
-        <span>/</span>
-        <span className="text-gray-900 dark:text-white">Campaign</span>
+      {/* Breadcrumb and Manage Button */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400">
+            Home
+          </Link>
+          <span>/</span>
+          <Link href="/projects" className="hover:text-blue-600 dark:hover:text-blue-400">
+            Projects
+          </Link>
+          <span>/</span>
+          <span className="text-gray-900 dark:text-white">Campaign</span>
+        </div>
+        
+        {isOwner && (
+          <Link
+            href={`/projects/${campaign.id}/manage`}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Manage Campaign
+          </Link>
+        )}
       </div>
 
       {/* Category and Status */}
