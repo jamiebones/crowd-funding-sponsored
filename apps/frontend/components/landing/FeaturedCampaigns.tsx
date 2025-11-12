@@ -12,8 +12,12 @@ export function FeaturedCampaigns() {
     GET_FEATURED_CAMPAIGNS,
     {
       variables: { first: 6 },
+      // Don't show error for empty results
+      errorPolicy: 'all',
     }
   );
+
+  const campaigns = data?.campaigns || [];
 
   return (
     <section className="py-16 md:py-20 bg-gray-50 dark:bg-gray-900">
@@ -57,33 +61,45 @@ export function FeaturedCampaigns() {
           </div>
         )}
 
-        {error && (
+        {error && !data && (
           <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              Unable to load campaigns. Please try again later.
+            <p className="text-red-500 dark:text-red-400 mb-2 font-semibold">
+              Unable to load campaigns
+            </p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              {error.message || 'Please check your connection or try again later.'}
             </p>
           </div>
         )}
 
-        {!loading && !error && data?.campaigns && data.campaigns.length > 0 && (
+        {!loading && !error && campaigns.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data.campaigns.map((campaign) => (
+            {campaigns.map((campaign) => (
               <CampaignCard key={campaign.id} campaign={campaign} />
             ))}
           </div>
         )}
 
-        {!loading && !error && (!data?.campaigns || data.campaigns.length === 0) && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              No active campaigns yet. Be the first to start one!
-            </p>
-            <Link
-              href="/new-project"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-            >
-              Start a Campaign
-            </Link>
+        {!loading && campaigns.length === 0 && (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8">
+            <div className="max-w-md mx-auto">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ArrowRight className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                No Campaigns Yet
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">
+                Be the first to launch a campaign and bring your innovative ideas to life!
+              </p>
+              <Link
+                href="/new-project"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+              >
+                Create Your Campaign
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
           </div>
         )}
       </div>

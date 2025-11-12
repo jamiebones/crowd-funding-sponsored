@@ -85,9 +85,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const turbo = TurboFactory.authenticated({
-            privateKey: privateKey,
-        });
+        // Use EthereumSigner for Ethereum wallets
+        const signer = new EthereumSigner(privateKey);
+        const turbo = TurboFactory.authenticated({ signer } as any);
 
         const contentBuffer = Buffer.from(JSON.stringify(campaignContent));
         const uploadResult = await turbo.uploadFile({

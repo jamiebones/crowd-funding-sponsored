@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { CATEGORIES, MILESTONE_STATUS } from '@/lib/constants';
+import { addressToSubgraphId, subgraphIdToAddress } from '@/lib/utils';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
 
 const CROWD_FUNDING_ABI = CROWD_FUNDING_CONTRACT.abi;
@@ -30,18 +31,55 @@ const CROWD_FUNDING_ABI = CROWD_FUNDING_CONTRACT.abi;
 export default function CampaignManagePage() {
   const params = useParams();
   const router = useRouter();
-  const address = params.address as string;
+  const addressParam = params.address as string;
   const { address: walletAddress, isConnected } = useAccount();
+
+  // Convert address to subgraph ID format if it looks like a normal address
+  const campaignId = addressParam.startsWith('0x') && addressParam.length === 42
+    ? addressToSubgraphId(addressParam.toLowerCase())
+    : addressParam.toLowerCase();
+
+  // Get the actual contract address for blockchain interactions
+  const contractAddress = addressParam.startsWith('0x') && addressParam.length === 42
+    ? addressParam
+    : subgraphIdToAddress(addressParam);
 
   const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
   const [showEndCampaignModal, setShowEndCampaignModal] = useState(false);
+  const [campaignTitle, setCampaignTitle] = useState<string>('');
 
   const { data, loading, error, refetch } = useQuery(GET_CAMPAIGN_MANAGE_DATA, {
-    variables: { id: address.toLowerCase() },
-    skip: !address,
+    variables: { id: campaignId },
+    skip: !addressParam,
   });
 
   const campaign: Campaign | undefined = (data as any)?.campaign;
+
+  // Fetch campaign title from Arweave if not in subgraph
+  useEffect(() => {
+    if (campaign && !campaign.content?.title && campaign.campaignCID) {
+      const abortController = new AbortController();
+      
+      fetch(`https://arweave.net/${campaign.campaignCID}`, {
+        signal: abortController.signal,
+      })
+        .then((res) => res.json())
+        .then((content) => {
+          if (content.title) {
+            setCampaignTitle(content.title);
+          }
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.error('Failed to fetch campaign title:', err);
+          }
+        });
+
+      return () => {
+        abortController.abort();
+      };
+    }
+  }, [campaign]);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -51,18 +89,18 @@ export default function CampaignManagePage() {
   // Redirect if not connected
   useEffect(() => {
     if (!isConnected) {
-      router.push(`/projects/${address}`);
+      router.push(`/projects/${addressParam}`);
     }
-  }, [isConnected, router, address]);
+  }, [isConnected, router, addressParam]);
 
   // Check ownership
   useEffect(() => {
     if (campaign && walletAddress) {
       if (campaign.owner.id.toLowerCase() !== walletAddress.toLowerCase()) {
-        router.push(`/projects/${address}`);
+        router.push(`/projects/${addressParam}`);
       }
     }
-  }, [campaign, walletAddress, router, address]);
+  }, [campaign, walletAddress, router, addressParam]);
 
   // Refetch on success
   useEffect(() => {
@@ -75,7 +113,7 @@ export default function CampaignManagePage() {
 
   const handleWithdrawMilestone = (milestoneId: string) => {
     writeContract({
-      address: address as `0x${string}`,
+      address: contractAddress as `0x${string}`,
       abi: CROWD_FUNDING_ABI,
       functionName: 'withdrawMilestone',
     });
@@ -83,7 +121,7 @@ export default function CampaignManagePage() {
 
   const handleEndCampaign = () => {
     writeContract({
-      address: address as `0x${string}`,
+      address: contractAddress as `0x${string}`,
       abi: CROWD_FUNDING_ABI,
       functionName: 'endCampaign',
     });
@@ -116,7 +154,13 @@ export default function CampaignManagePage() {
             href="/dashboard"
             className="text-blue-600 dark:text-blue-400 hover:underline"
           >
-            Go to Dashboard
+            ← Back to Dashboard
+          </Link>
+          <Link
+            href={`/projects/${addressParam}`}
+            className="ml-4 text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            View Campaign
           </Link>
         </div>
       </div>
@@ -142,7 +186,7 @@ export default function CampaignManagePage() {
         {/* Header */}
         <div className="mb-6">
           <Link
-            href={`/projects/${address}`}
+            href={`/projects/${addressParam}`}
             className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -154,7 +198,7 @@ export default function CampaignManagePage() {
               <div className="text-5xl">{categoryInfo?.icon || '📦'}</div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  {campaign.title}
+                  {campaignTitle || campaign.content?.title || campaign.title || 'Untitled Campaign'}
                 </h1>
                 <div className="flex items-center gap-2">
                   <span className={`
@@ -166,14 +210,14 @@ export default function CampaignManagePage() {
                     {campaign.campaignRunning ? 'Active' : 'Ended'}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Campaign ID: {address.slice(0, 6)}...{address.slice(-4)}
+                    Campaign ID: {contractAddress.slice(0, 6)}...{contractAddress.slice(-4)}
                   </span>
                 </div>
               </div>
             </div>
 
             <Link
-              href={`/projects/${address}`}
+              href={`/projects/${addressParam}`}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
@@ -259,7 +303,7 @@ export default function CampaignManagePage() {
                 </h2>
                 {canCreateMilestone && campaign.campaignRunning && (
                   <Link
-                    href={`/projects/${address}/milestone/new`}
+                    href={`/projects/${addressParam}/milestone/new`}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -322,7 +366,7 @@ export default function CampaignManagePage() {
 
                           <div className="flex items-center gap-2">
                             <Link
-                              href={`/projects/${address}/milestone/${milestone.id}`}
+                              href={`/projects/${addressParam}/milestone/${milestone.id}`}
                               className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded text-sm transition-colors"
                             >
                               View
@@ -356,7 +400,7 @@ export default function CampaignManagePage() {
                   </p>
                   {canCreateMilestone && campaign.campaignRunning && (
                     <Link
-                      href={`/projects/${address}/milestone/new`}
+                      href={`/projects/${addressParam}/milestone/new`}
                       className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                     >
                       <Plus className="w-5 h-5" />

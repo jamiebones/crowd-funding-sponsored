@@ -1,5 +1,5 @@
 import { CampaignFormData } from '@/app/new-project/page';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Upload, X, AlertCircle, Loader2, FileImage, FileVideo } from 'lucide-react';
 
 interface StepTwoProps {
@@ -9,14 +9,20 @@ interface StepTwoProps {
   onBack: () => void;
 }
 
-const MAX_TOTAL_SIZE = process.env.NEXT_PUBLIC_MAX_TOTAL_SIZE ? parseInt(process.env.NEXT_PUBLIC_MAX_TOTAL_SIZE) : 10 * 1024 * 1024; // 10MB
-const MAX_FILES = process.env.NEXT_PUBLIC_MAX_FILE_SIZE ? parseInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE) : 10; // 10 files
+const MAX_TOTAL_SIZE = process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE 
+  ? parseInt(process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE) 
+  : 10 * 1024 * 1024; // Default: 10MB in bytes
+
+const MAX_FILES_COUNT = process.env.NEXT_PUBLIC_MAX_FILES_COUNT 
+  ? parseInt(process.env.NEXT_PUBLIC_MAX_FILES_COUNT) 
+  : 10; // Default: 10 files
 
 export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate total size
   const totalSize = formData.files.reduce((acc, file) => acc + file.size, 0);
@@ -33,32 +39,65 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
     const newFiles = Array.from(files);
     const currentFiles = formData.files;
     
+    // Reset file input
+    const resetFileInput = () => {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+
     // Check file count
-    if (currentFiles.length + newFiles.length > MAX_FILES) {
-      setErrors({ files: `Maximum ${MAX_FILES} files allowed` });
+    if (currentFiles.length + newFiles.length > MAX_FILES_COUNT) {
+      setErrors({ files: `Maximum ${MAX_FILES_COUNT} files allowed` });
+      resetFileInput();
       return;
     }
 
     // Check total size
-    const newTotalSize = currentFiles.reduce((acc, f) => acc + f.size, 0) +
-                         newFiles.reduce((acc, f) => acc + f.size, 0);
+    const currentTotalSize = currentFiles.reduce((acc, f) => acc + f.size, 0);
+    const newFilesSize = newFiles.reduce((acc, f) => acc + f.size, 0);
+    const newTotalSize = currentTotalSize + newFilesSize;
+    
+    console.log('File size validation:', {
+      MAX_TOTAL_SIZE,
+      currentTotalSize,
+      newFilesSize,
+      newTotalSize,
+      currentTotalSizeFormatted: formattedSize(currentTotalSize),
+      newFilesSizeFormatted: formattedSize(newFilesSize),
+      newTotalSizeFormatted: formattedSize(newTotalSize),
+      exceedsLimit: newTotalSize > MAX_TOTAL_SIZE
+    });
     
     if (newTotalSize > MAX_TOTAL_SIZE) {
-      setErrors({ files: `Total size cannot exceed 10 MB` });
+      setErrors({ files: `Total size cannot exceed ${formattedSize(MAX_TOTAL_SIZE)} (${formattedSize(newTotalSize)} selected)` });
+      resetFileInput();
       return;
     }
 
     // Check file types (images and videos only)
-    const validFiles = newFiles.filter(file => {
+    const validFiles: File[] = [];
+    let hasInvalidFile = false;
+    
+    newFiles.forEach(file => {
       const isValid = file.type.startsWith('image/') || file.type.startsWith('video/');
-      if (!isValid) {
-        setErrors({ files: `Only images and videos are allowed` });
+      if (isValid) {
+        validFiles.push(file);
+      } else {
+        hasInvalidFile = true;
       }
-      return isValid;
     });
 
+    if (hasInvalidFile) {
+      setErrors({ files: `Only images and videos are allowed` });
+      resetFileInput();
+      return;
+    }
+
+    // Success - add files and clear errors
     updateFormData({ files: [...currentFiles, ...validFiles] });
     setErrors({});
+    resetFileInput();
   };
 
   // Remove file
@@ -78,12 +117,12 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     handleFiles(e.dataTransfer.files);
-  }, [formData.files]);
+  };
 
   // Upload to Arweave
   const handleUpload = async () => {
@@ -222,6 +261,7 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
             <label className="text-blue-600 hover:text-blue-700 cursor-pointer">
               browse
               <input
+                ref={fileInputRef}
                 type="file"
                 multiple
                 accept="image/*,video/*"
@@ -231,7 +271,7 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
             </label>
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Max {MAX_FILES} files, 10 MB total (images and videos only)
+            Max {MAX_FILES_COUNT} files, 10 MB total (images and videos only)
           </p>
         </div>
 

@@ -57,7 +57,7 @@ export function CampaignCardList({ campaign }: CampaignCardListProps) {
               </div>
               
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                {campaign.title}
+                {campaign.content?.title || campaign.title || 'Untitled Campaign'}
               </h3>
 
               {/* Stats Row */}

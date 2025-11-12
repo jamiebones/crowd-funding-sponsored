@@ -4,27 +4,29 @@ export const GET_CAMPAIGN_DETAIL = gql`
   query GetCampaignDetail($id: ID!) {
     campaign(id: $id) {
       id
+      contractAddress
       campaignCID
       category
-      title
+      content {
+        title
+      }
       amountSought
       amountRaised
       backers
       campaignRunning
       dateCreated
-      dateEnded
+      endDate
       owner {
         id
         totalCampaigns
-        totalFundingReceived
+        fundingGiven
       }
       milestone {
         id
         milestoneCID
         status
-        voteCount
-        totalVotes
         periodToVote
+        dateCreated
         votes {
           id
           voter
@@ -66,16 +68,20 @@ export const GET_CAMPAIGN_MILESTONES = gql`
   query GetCampaignMilestones($campaignId: String!) {
     milestones(
       where: { campaign: $campaignId }
-      orderBy: createdAt
+      orderBy: dateCreated
       orderDirection: asc
     ) {
       id
       milestoneCID
       status
-      voteCount
-      totalVotes
       periodToVote
-      createdAt
+      dateCreated
+      votes {
+        id
+        voter
+        support
+        weight
+      }
     }
   }
 `;

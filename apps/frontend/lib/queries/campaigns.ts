@@ -18,7 +18,9 @@ export const GET_ALL_CAMPAIGNS = gql`
       id
       campaignCID
       category
-      title
+      content {
+        title
+      }
       amountSought
       amountRaised
       backers
@@ -54,7 +56,9 @@ export const SEARCH_CAMPAIGNS = gql`
       id
       campaignCID
       category
-      title
+      content {
+        title
+      }
       amountSought
       amountRaised
       backers

@@ -352,7 +352,7 @@ export default function CategoryPage() {
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="font-semibold text-lg text-gray-900 dark:text-white line-clamp-2 flex-1">
-                        {campaign.title}
+                        {campaign.content?.title || campaign.title || 'Untitled Campaign'}
                       </h3>
                       {campaign.campaignRunning ? (
                         <span className="ml-2 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full whitespace-nowrap flex-shrink-0">

@@ -4,15 +4,57 @@ import Link from 'next/link';
 import { CATEGORIES } from '@/lib/constants';
 import { ExternalLink, TrendingUp, Users, Calendar, Edit } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from 'react';
 
 interface MyCampaignsProps {
   address: string;
+}
+
+interface CampaignWithContent {
+  [key: string]: any;
+  fetchedTitle?: string;
 }
 
 export function MyCampaigns({ address }: MyCampaignsProps) {
   const { data, loading, error } = useQuery(GET_USER_CAMPAIGNS, {
     variables: { owner: address.toLowerCase() },
   });
+
+  const [campaignsWithTitles, setCampaignsWithTitles] = useState<CampaignWithContent[]>([]);
+
+  // Fetch titles from Arweave for campaigns without content.title
+  useEffect(() => {
+    const campaigns = (data as any)?.campaigns || [];
+    if (campaigns.length === 0) return;
+
+    const fetchTitles = async () => {
+      const updatedCampaigns = await Promise.all(
+        campaigns.map(async (campaign: any) => {
+          // If title exists in subgraph, use it
+          if (campaign.content?.title) {
+            return campaign;
+          }
+
+          // Otherwise, fetch from Arweave
+          if (campaign.campaignCID) {
+            try {
+              const response = await fetch(`https://arweave.net/${campaign.campaignCID}`);
+              const content = await response.json();
+              return { ...campaign, fetchedTitle: content.title };
+            } catch (err) {
+              console.error('Failed to fetch title for', campaign.id, err);
+              return campaign;
+            }
+          }
+
+          return campaign;
+        })
+      );
+      setCampaignsWithTitles(updatedCampaigns);
+    };
+
+    fetchTitles();
+  }, [data]);
 
   if (loading) {
     return (
@@ -39,7 +81,7 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
 
   const campaigns = (data as any)?.campaigns || [];
 
-  if (campaigns.length === 0) {
+  if (campaigns.length === 0 && campaignsWithTitles.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg p-12 text-center">
         <div className="max-w-md mx-auto">
@@ -65,11 +107,14 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
 
   return (
     <div className="space-y-4">
-      {campaigns.map((campaign: any) => {
+      {(campaignsWithTitles.length > 0 ? campaignsWithTitles : campaigns).map((campaign: any) => {
         const category = CATEGORIES.find((c) => c.id === campaign.category);
         const progress = (parseFloat(campaign.amountRaised) / parseFloat(campaign.amountSought)) * 100;
-        const endDate = new Date(parseInt(campaign.endTime) * 1000);
-        const isEnded = endDate < new Date() || !campaign.campaignRunning;
+        const endDate = campaign.endDate ? new Date(parseInt(campaign.endDate) * 1000) : null;
+        const isEnded = endDate ? endDate < new Date() : !campaign.campaignRunning;
+
+        // Use fetchedTitle if content.title is not available
+        const displayTitle = campaign.content?.title || campaign.fetchedTitle || campaign.title || 'Untitled Campaign';
 
         return (
           <div
@@ -95,7 +140,7 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
                   )}
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  {campaign.title}
+                  {displayTitle}
                 </h3>
                 <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex items-center gap-1">
@@ -105,7 +150,7 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      Created {formatDistanceToNow(new Date(parseInt(campaign.createdAt) * 1000), { addSuffix: true })}
+                      Created {formatDistanceToNow(new Date(parseInt(campaign.dateCreated) * 1000), { addSuffix: true })}
                     </span>
                   </div>
                 </div>
@@ -113,14 +158,14 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
 
               <div className="flex gap-2">
                 <Link
-                  href={`/projects/${campaign.id}`}
+                  href={`/projects/${campaign.contractAddress || campaign.id}`}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   title="View Campaign"
                 >
                   <ExternalLink className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </Link>
                 <Link
-                  href={`/projects/${campaign.id}/manage`}
+                  href={`/projects/${campaign.contractAddress || campaign.id}/manage`}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   title="Manage Campaign"
                 >
@@ -154,7 +199,7 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
             {campaign.campaignRunning && !isEnded && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Link
-                  href={`/projects/${campaign.id}/manage`}
+                  href={`/projects/${campaign.contractAddress || campaign.id}/manage`}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
                 >
                   <Edit className="w-4 h-4" />

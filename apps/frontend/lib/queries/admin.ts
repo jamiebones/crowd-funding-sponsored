@@ -4,7 +4,9 @@ export const GET_PLATFORM_STATS = gql`
   query GetPlatformStats {
     campaigns(first: 1000) {
       id
-      title
+      content {
+        title
+      }
       amountRaised
       campaignRunning
       dateCreated
@@ -33,7 +35,9 @@ export const GET_RECENT_CAMPAIGNS = gql`
       orderDirection: desc
     ) {
       id
-      title
+      content {
+        title
+      }
       category
       amountSought
       amountRaised

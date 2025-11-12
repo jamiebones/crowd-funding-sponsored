@@ -6,8 +6,9 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { parseEther } from 'viem';
 import { useQuery } from '@apollo/client/react';
 import { GET_CAMPAIGN_DETAIL } from '@/lib/queries/campaign-detail';
-import { Campaign } from '@/types/campaign';
+import { Campaign, CampaignContent } from '@/types/campaign';
 import { CATEGORIES } from '@/lib/constants';
+import { addressToSubgraphId, subgraphIdToAddress } from '@/lib/utils';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
 import { Loader2, Heart, Coins, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -17,21 +18,58 @@ const CROWD_FUNDING_ABI = CROWD_FUNDING_CONTRACT.abi;
 export default function DonatePage() {
   const params = useParams();
   const router = useRouter();
-  const address = params.address as string;
+  const addressParam = params.address as string;
   const { address: walletAddress, isConnected } = useAccount();
+
+  // Convert address to subgraph ID format if it looks like a normal address
+  const campaignId = addressParam.startsWith('0x') && addressParam.length === 42
+    ? addressToSubgraphId(addressParam.toLowerCase())
+    : addressParam.toLowerCase();
+
+  // Get the actual contract address for blockchain interactions
+  const contractAddress = addressParam.startsWith('0x') && addressParam.length === 42
+    ? addressParam
+    : subgraphIdToAddress(addressParam);
 
   const [amount, setAmount] = useState('');
   const [email, setEmail] = useState('');
   const [wantUpdates, setWantUpdates] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [donationSuccess, setDonationSuccess] = useState(false);
+  const [campaignTitle, setCampaignTitle] = useState<string>('');
 
   const { data, loading: campaignLoading } = useQuery(GET_CAMPAIGN_DETAIL, {
-    variables: { id: address.toLowerCase() },
-    skip: !address,
+    variables: { id: campaignId },
+    skip: !addressParam,
   });
 
   const campaign: Campaign | undefined = (data as any)?.campaign;
+
+  // Fetch campaign title from Arweave if not in subgraph
+  useEffect(() => {
+    if (campaign && !campaign.content?.title && campaign.campaignCID) {
+      const abortController = new AbortController();
+      
+      fetch(`https://arweave.net/${campaign.campaignCID}`, {
+        signal: abortController.signal,
+      })
+        .then((res) => res.json())
+        .then((content: CampaignContent) => {
+          if (content.title) {
+            setCampaignTitle(content.title);
+          }
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.error('Failed to fetch campaign title:', err);
+          }
+        });
+
+      return () => {
+        abortController.abort();
+      };
+    }
+  }, [campaign]);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -41,9 +79,9 @@ export default function DonatePage() {
   // Redirect if not connected
   useEffect(() => {
     if (!isConnected) {
-      router.push(`/projects/${address}`);
+      router.push(`/projects/${addressParam}`);
     }
-  }, [isConnected, router, address]);
+  }, [isConnected, router, addressParam]);
 
   // Handle donation success
   useEffect(() => {
@@ -70,8 +108,8 @@ export default function DonatePage() {
         body: JSON.stringify({
           walletAddress,
           email: email.toLowerCase(),
-          campaignId: address.toLowerCase(),
-          campaignTitle: campaign?.title || 'Campaign',
+          campaignId: campaignId,
+          campaignTitle: campaignTitle || campaign?.content?.title || campaign?.title || 'Campaign',
           donationAmount: `${amount} BNB`,
         }),
       });
@@ -84,34 +122,32 @@ export default function DonatePage() {
     }
   };
 
-  const handleDonate = () => {
-    // Validate amount
-    const donationAmount = parseFloat(amount);
-    if (!donationAmount || donationAmount <= 0) {
-      alert('Please enter a valid donation amount');
+  const handleDonate = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('Please enter a valid amount');
       return;
     }
 
-    // Validate email if user wants updates
-    if (wantUpdates) {
-      if (!email) {
-        setEmailError('Please enter your email address');
-        return;
-      }
-      if (!validateEmail(email)) {
-        setEmailError('Please enter a valid email address');
-        return;
-      }
-      setEmailError('');
+    if (wantUpdates && !email) {
+      setEmailError('Email is required for updates');
+      return;
     }
 
-    // Execute donation
-    writeContract({
-      address: address as `0x${string}`,
-      abi: CROWD_FUNDING_ABI,
-      functionName: 'giveDonationToCause',
-      value: parseEther(amount),
-    });
+    if (wantUpdates && email && !validateEmail(email)) {
+      setEmailError('Please enter a valid email');
+      return;
+    }
+
+    try {
+      writeContract({
+        address: contractAddress as `0x${string}`,
+        abi: CROWD_FUNDING_ABI,
+        functionName: 'giveDonationToCause',
+        value: parseEther(amount),
+      });
+    } catch (error) {
+      console.error('Donation error:', error);
+    }
   };
 
   if (!isConnected) {
@@ -196,7 +232,7 @@ export default function DonatePage() {
 
             <div className="flex gap-4 justify-center">
               <Link
-                href={`/projects/${address}`}
+                href={`/projects/${addressParam}`}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
               >
                 View Campaign
@@ -219,7 +255,7 @@ export default function DonatePage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
         <Link
-          href={`/projects/${address}`}
+          href={`/projects/${addressParam}`}
           className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -232,7 +268,7 @@ export default function DonatePage() {
             <div className="text-4xl">{categoryInfo?.icon || '📦'}</div>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {campaign.title}
+                {campaignTitle || campaign.content?.title || campaign.title || 'Untitled Campaign'}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
                 Support this campaign and earn MWG-DT tokens

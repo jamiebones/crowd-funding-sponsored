@@ -105,9 +105,10 @@ export default function ProjectsPage() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      campaigns = campaigns.filter((campaign) =>
-        campaign.title.toLowerCase().includes(query)
-      );
+      campaigns = campaigns.filter((campaign) => {
+        const title = campaign.content?.title || campaign.title || '';
+        return title.toLowerCase().includes(query);
+      });
     }
 
     return campaigns;

@@ -24,7 +24,6 @@ export const GET_FEATURED_CAMPAIGNS = gql`
       id
       campaignCID
       category
-      title
       amountSought
       amountRaised
       backers
@@ -32,6 +31,9 @@ export const GET_FEATURED_CAMPAIGNS = gql`
       dateCreated
       owner {
         id
+      }
+      content {
+        title
       }
       milestone {
         id
@@ -60,7 +62,6 @@ export const GET_RECENT_CAMPAIGNS = gql`
       id
       campaignCID
       category
-      title
       amountSought
       amountRaised
       backers
@@ -68,6 +69,9 @@ export const GET_RECENT_CAMPAIGNS = gql`
       dateCreated
       owner {
         id
+      }
+      content {
+        title
       }
     }
   }

@@ -17,7 +17,14 @@ export const ARWEAVE_GATEWAY = process.env.NEXT_PUBLIC_ARWEAVE_GATEWAY || 'https
 
 export const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL;
 
+/**
+ * @deprecated Use getFundingFee() contract call instead. Fee can be changed by factory owner.
+ */
 export const FUNDING_FEE = '0.000000001'; // BNB
+
+/**
+ * @deprecated Use getFundingFee() contract call instead. Fee can be changed by factory owner.
+ */
 export const PLATFORM_FEE = '0.000000001'; // BNB (alias for FUNDING_FEE)
 
 export const CATEGORIES = [

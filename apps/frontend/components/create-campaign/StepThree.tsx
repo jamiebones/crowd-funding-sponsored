@@ -1,11 +1,11 @@
 import { CampaignFormData } from '@/app/new-project/page';
-import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
-import { FACTORY_ADDRESS, PLATFORM_FEE, CATEGORIES } from '@/lib/constants';
+import { useState, useEffect } from 'react';
+import { useWriteContract, useWaitForTransactionReceipt, useChainId, useReadContract } from 'wagmi';
+import { parseEther, decodeEventLog, formatEther } from 'viem';
+import { FACTORY_ADDRESS, CATEGORIES } from '@/lib/constants';
 import FactoryABI from '@/abis/CrowdFundingFactory.json';
 import { Abi } from 'viem';
-import { AlertCircle, Loader2, ExternalLink, Edit } from 'lucide-react';
+import { AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 
 interface StepThreeProps {
   formData: CampaignFormData;
@@ -15,13 +15,29 @@ interface StepThreeProps {
 
 export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
   const [error, setError] = useState<string>('');
+  const chainId = useChainId();
+
+  // Read current platform fee from contract
+  const { data: platformFee, isLoading: isFeeLoading } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FactoryABI.abi as Abi,
+    functionName: 'getFundingFee',
+  });
 
   const { writeContract, data: hash, isPending, isError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({
     hash,
   });
 
   const category = CATEGORIES.find(c => c.id === formData.category);
+  
+  // Get block explorer URL based on chain
+  const getBlockExplorerUrl = (txHash: string) => {
+    const baseUrl = chainId === 56 
+      ? 'https://bscscan.com' 
+      : 'https://testnet.bscscan.com';
+    return `${baseUrl}/tx/${txHash}`;
+  };
 
   const handleCreate = async () => {
     try {
@@ -29,6 +45,11 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
 
       if (!formData.arweaveTxId) {
         setError('Campaign content not uploaded. Please go back and upload your content.');
+        return;
+      }
+
+      if (!platformFee) {
+        setError('Unable to read platform fee. Please try again.');
         return;
       }
 
@@ -44,7 +65,7 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
           parseEther(formData.goal), // amountSought (in wei)
           BigInt(formData.duration * 24 * 60 * 60), // duration (in seconds)
         ],
-        value: parseEther(PLATFORM_FEE), // 0.000000001 BNB platform fee
+        value: platformFee as bigint, // Dynamic platform fee from contract
       } as any);
 
     } catch (err) {
@@ -53,15 +74,48 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
     }
   };
 
-  // Handle success
-  if (isSuccess && hash) {
-    // Extract campaign address from transaction receipt
-    // In a real implementation, you would decode the event logs to get the exact address
-    // For now, we'll pass the hash and the arweaveTxId
-    setTimeout(() => {
-      onSuccess(hash, formData.arweaveTxId!); // Using hash as placeholder - should extract campaign address from logs
-    }, 500);
-  }
+  // Handle success - extract campaign address from logs
+  useEffect(() => {
+    if (isSuccess && receipt && formData.arweaveTxId) {
+      // Find the NewCrowdFundingContractCreated event in the logs
+      const campaignCreatedLog = receipt.logs.find(log => {
+        try {
+          const decoded = decodeEventLog({
+            abi: FactoryABI.abi as Abi,
+            data: log.data,
+            topics: log.topics,
+          });
+          return decoded.eventName === 'NewCrowdFundingContractCreated';
+        } catch {
+          return false;
+        }
+      });
+
+      if (campaignCreatedLog) {
+        try {
+          const decoded = decodeEventLog({
+            abi: FactoryABI.abi as Abi,
+            data: campaignCreatedLog.data,
+            topics: campaignCreatedLog.topics,
+          });
+          
+          // The event returns: (owner, contractAddress, detailsId, title, category, duration, goal)
+          const campaignAddress = (decoded.args as any).contractAddress;
+          
+          if (campaignAddress) {
+            onSuccess(campaignAddress, formData.arweaveTxId);
+          } else {
+            setError('Could not extract campaign address from transaction');
+          }
+        } catch (err) {
+          console.error('Error decoding event log:', err);
+          setError('Failed to extract campaign address from transaction');
+        }
+      } else {
+        setError('Campaign creation event not found in transaction logs');
+      }
+    }
+  }, [isSuccess, receipt, formData.arweaveTxId, onSuccess]);
 
   return (
     <div className="space-y-6">
@@ -145,16 +199,6 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
             </a>
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={isPending || isConfirming}
-          className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-        >
-          <Edit className="w-4 h-4" />
-          Edit Campaign Details
-        </button>
       </div>
 
       {/* Cost Breakdown */}
@@ -162,32 +206,39 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
         <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
           💰 Cost Breakdown
         </h4>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-700 dark:text-gray-300">Platform Fee:</span>
-            <span className="font-semibold text-gray-900 dark:text-white">
-              {PLATFORM_FEE} BNB
-            </span>
+        {isFeeLoading ? (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading fee information...
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-700 dark:text-gray-300">Arweave Storage:</span>
-            <span className="font-semibold text-green-600 dark:text-green-400">
-              FREE (Platform Subsidized)
-            </span>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-700 dark:text-gray-300">Platform Fee:</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {platformFee ? formatEther(platformFee as bigint) : '0'} BNB
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700 dark:text-gray-300">Arweave Storage:</span>
+              <span className="font-semibold text-green-600 dark:text-green-400">
+                FREE (Platform Subsidized)
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700 dark:text-gray-300">Estimated Gas Fee:</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                ~0.0005 BNB
+              </span>
+            </div>
+            <div className="pt-2 border-t border-blue-200 dark:border-blue-700 flex justify-between">
+              <span className="font-semibold text-gray-900 dark:text-white">Total:</span>
+              <span className="font-bold text-gray-900 dark:text-white">
+                ~{platformFee ? (parseFloat(formatEther(platformFee as bigint)) + 0.0005).toFixed(7) : '0.0005'} BNB
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-700 dark:text-gray-300">Estimated Gas Fee:</span>
-            <span className="font-semibold text-gray-900 dark:text-white">
-              ~0.0005 BNB
-            </span>
-          </div>
-          <div className="pt-2 border-t border-blue-200 dark:border-blue-700 flex justify-between">
-            <span className="font-semibold text-gray-900 dark:text-white">Total:</span>
-            <span className="font-bold text-gray-900 dark:text-white">
-              ~{(parseFloat(PLATFORM_FEE) + 0.0005).toFixed(7)} BNB
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Error Message */}
@@ -230,7 +281,7 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
               </p>
               {hash && (
                 <a
-                  href={`https://testnet.bscscan.com/tx/${hash}`}
+                  href={getBlockExplorerUrl(hash)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-1"
@@ -270,13 +321,18 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
         <button
           type="button"
           onClick={handleCreate}
-          disabled={isPending || isConfirming || !formData.arweaveTxId}
+          disabled={isPending || isConfirming || !formData.arweaveTxId || isFeeLoading || !platformFee}
           className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isPending || isConfirming ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Creating Campaign...
+            </>
+          ) : isFeeLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading Fee...
             </>
           ) : (
             '🚀 Create Campaign'

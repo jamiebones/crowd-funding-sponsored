@@ -2,6 +2,7 @@ import { CampaignFormData } from '@/app/new-project/page';
 import Link from 'next/link';
 import { ExternalLink, Home, Share2, Eye, CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useChainId } from 'wagmi';
 
 interface SuccessProps {
   formData: CampaignFormData;
@@ -9,6 +10,15 @@ interface SuccessProps {
 
 export function Success({ formData }: SuccessProps) {
   const [confettiActive, setConfettiActive] = useState(true);
+  const chainId = useChainId();
+
+  // Get block explorer URL based on chain
+  const getBlockExplorerUrl = (txHash: string) => {
+    const baseUrl = chainId === 56 
+      ? 'https://bscscan.com' 
+      : 'https://testnet.bscscan.com';
+    return `${baseUrl}/tx/${txHash}`;
+  };
 
   useEffect(() => {
     // Disable confetti after 5 seconds
@@ -89,16 +99,17 @@ export function Success({ formData }: SuccessProps) {
         <div className="space-y-3 text-left">
           {formData.campaignAddress && (
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Contract Address</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Transaction Hash</p>
               <div className="flex items-center gap-2 mt-1">
                 <code className="text-sm bg-white dark:bg-gray-800 px-3 py-1 rounded border border-gray-300 dark:border-gray-600 flex-1 font-mono">
                   {formData.campaignAddress}
                 </code>
                 <a
-                  href={`https://testnet.bscscan.com/address/${formData.campaignAddress}`}
+                  href={getBlockExplorerUrl(formData.campaignAddress)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-700"
+                  title="View on Block Explorer"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>

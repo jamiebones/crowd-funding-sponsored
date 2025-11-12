@@ -77,18 +77,28 @@ export default function MilestoneDetailPage() {
 
   // Fetch milestone content from Arweave
   useEffect(() => {
-    if (milestone?.milestoneCID) {
-      fetch(`https://arweave.net/${milestone.milestoneCID}`)
-        .then((res) => res.json())
-        .then((content) => {
-          setMilestoneContent(content);
-          setLoadingContent(false);
-        })
-        .catch((error) => {
+    if (!milestone?.milestoneCID) return;
+
+    const abortController = new AbortController();
+    
+    fetch(`https://arweave.net/${milestone.milestoneCID}`, {
+      signal: abortController.signal,
+    })
+      .then((res) => res.json())
+      .then((content) => {
+        setMilestoneContent(content);
+        setLoadingContent(false);
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
           console.error('Error fetching milestone content:', error);
           setLoadingContent(false);
-        });
-    }
+        }
+      });
+
+    return () => {
+      abortController.abort();
+    };
   }, [milestone?.milestoneCID]);
 
   // Refetch after successful vote
@@ -211,7 +221,7 @@ export default function MilestoneDetailPage() {
             href={`/projects/${campaignAddress}`}
             className="hover:text-gray-900 dark:hover:text-white"
           >
-            {campaign.title}
+            {campaign.content?.title || campaign.title || 'Campaign'}
           </Link>
           <span>/</span>
           <span className="text-gray-900 dark:text-white">Milestone</span>
@@ -238,7 +248,7 @@ export default function MilestoneDetailPage() {
                 {milestoneContent?.title || 'Loading...'}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Created {formatDistanceToNow(new Date(parseInt(milestone.createdAt) * 1000))} ago
+                Created {formatDistanceToNow(new Date(parseInt(milestone.dateCreated) * 1000))} ago
               </p>
             </div>
           </div>
@@ -538,7 +548,7 @@ export default function MilestoneDetailPage() {
                 className="block hover:bg-gray-50 dark:hover:bg-gray-900 p-3 rounded-lg transition-colors"
               >
                 <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                  {campaign.title}
+                  {campaign.content?.title || campaign.title || 'Untitled Campaign'}
                 </p>
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <TrendingUp className="w-4 h-4" />

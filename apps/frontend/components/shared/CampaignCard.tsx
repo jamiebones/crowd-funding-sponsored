@@ -16,6 +16,9 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
     100
   ).toFixed(1);
 
+  // Support both old and new schema structures
+  const title = campaign.content?.title || campaign.title || 'Untitled Campaign';
+
   return (
     <Link
       href={`/projects/${campaign.id}`}
@@ -39,7 +42,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
       <div className="p-6">
         {/* Title */}
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          {campaign.title}
+          {title}
         </h3>
 
         {/* Progress bar */}

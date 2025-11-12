@@ -4,30 +4,34 @@ export const GET_CAMPAIGN_MANAGE_DATA = gql`
   query GetCampaignManageData($id: ID!) {
     campaign(id: $id) {
       id
+      contractAddress
       campaignCID
       category
-      title
+      content {
+        title
+      }
       amountSought
       amountRaised
       backers
       owner {
         id
         totalCampaigns
-        totalRaised
+        fundingGiven
       }
       campaignRunning
       dateCreated
-      dateEnded
+      endDate
       milestone {
         id
         milestoneCID
         status
-        amountToWithdraw
-        amountWithdrawn
         periodToVote
-        votesFor
-        votesAgainst
-        createdAt
+        dateCreated
+        votes {
+          id
+          support
+          weight
+        }
       }
       donations {
         id

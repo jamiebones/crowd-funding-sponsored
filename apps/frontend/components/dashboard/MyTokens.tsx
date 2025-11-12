@@ -164,7 +164,7 @@ export function MyTokens({ address }: MyTokensProps) {
                             href={`/projects/${donation.campaign.id}`}
                             className="text-gray-900 dark:text-white font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                           >
-                            {donation.campaign.title}
+                            {donation.campaign.content?.title || donation.campaign.title || 'Untitled Campaign'}
                           </Link>
 
                           <div className="flex items-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400">

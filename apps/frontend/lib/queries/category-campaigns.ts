@@ -9,7 +9,9 @@ export const GET_CAMPAIGNS_BY_CATEGORY = gql`
       first: 1000
     ) {
       id
-      title
+      content {
+        title
+      }
       category
       amountSought
       amountRaised

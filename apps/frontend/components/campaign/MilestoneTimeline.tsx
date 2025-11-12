@@ -73,11 +73,15 @@ export function MilestoneTimeline({ campaign }: MilestoneTimelineProps) {
         {milestones.map((milestone, index) => {
           const statusInfo = getStatusInfo(milestone.status);
           const StatusIcon = statusInfo.icon;
-          const totalVotes = parseInt(milestone.totalVotes);
-          const votePercentage =
-            totalVotes > 0
-              ? ((milestone.voteCount / totalVotes) * 100).toFixed(1)
-              : '0';
+          
+          // Calculate votes from votes array
+          const votes = milestone.votes || [];
+          const supportVotes = votes.filter(v => v.support);
+          const totalVoteWeight = votes.reduce((sum, v) => sum + parseFloat(v.weight), 0);
+          const supportWeight = supportVotes.reduce((sum, v) => sum + parseFloat(v.weight), 0);
+          const votePercentage = totalVoteWeight > 0
+            ? ((supportWeight / totalVoteWeight) * 100).toFixed(1)
+            : '0';
 
           return (
             <Link

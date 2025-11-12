@@ -19,16 +19,17 @@ import {
   Clock,
   ArrowRight
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CATEGORY_LABELS } from '@/lib/constants';
 
 const BLOCK_EXPLORER = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || 'https://testnet.bscscan.com';
 
 export default function UserProfilePage() {
   const params = useParams();
-  const address = params?.address as string;
-  const [copiedAddress, setCopiedAddress] = useState(false);
+  const address = params.address as string;
   const [activeTab, setActiveTab] = useState<'campaigns' | 'donations'>('campaigns');
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data, loading, error } = useQuery(GET_USER_PROFILE, {
     variables: { address: address?.toLowerCase() },
@@ -65,9 +66,25 @@ export default function UserProfilePage() {
     if (address) {
       navigator.clipboard.writeText(address);
       setCopiedAddress(true);
-      setTimeout(() => setCopiedAddress(false), 2000);
+      
+      // Clear any existing timer
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+      
+      // Set new timer
+      copyTimerRef.current = setTimeout(() => setCopiedAddress(false), 2000);
     }
   };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   // Get category label
   const getCategoryLabel = (category: number): string => {
@@ -329,7 +346,7 @@ export default function UserProfilePage() {
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 flex-1">
-                              {campaign.title}
+                              {campaign.content?.title || campaign.title || 'Untitled Campaign'}
                             </h3>
                             {campaign.campaignRunning ? (
                               <span className="ml-2 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full whitespace-nowrap">
@@ -413,7 +430,7 @@ export default function UserProfilePage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                              {donation.campaign.title}
+                              {donation.campaign.content?.title || donation.campaign.title || 'Untitled Campaign'}
                             </h3>
                             <div className="flex items-center gap-4 text-sm">
                               <div>

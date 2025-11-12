@@ -6,15 +6,13 @@ export const GET_MILESTONE_DETAIL = gql`
       id
       milestoneCID
       status
-      amountToWithdraw
-      amountWithdrawn
       periodToVote
-      votesFor
-      votesAgainst
-      createdAt
+      dateCreated
       campaign {
         id
-        title
+        content {
+          title
+        }
         campaignCID
         category
         amountRaised

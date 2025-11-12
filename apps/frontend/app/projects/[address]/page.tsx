@@ -11,14 +11,21 @@ import { FundingProgress } from '@/components/campaign/FundingProgress';
 import { MilestoneTimeline } from '@/components/campaign/MilestoneTimeline';
 import { RecentDonations } from '@/components/campaign/RecentDonations';
 import { CATEGORIES } from '@/lib/constants';
+import { addressToSubgraphId } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 export default function CampaignDetailPage() {
   const params = useParams();
   const address = params.address as string;
+  
+  // Convert address to subgraph ID format if it looks like a normal address
+  // The subgraph uses Bytes.fromUTF8(address.toHexString()) as ID
+  const campaignId = address.startsWith('0x') && address.length === 42
+    ? addressToSubgraphId(address.toLowerCase())
+    : address.toLowerCase();
 
   const { data, loading, error } = useQuery(GET_CAMPAIGN_DETAIL, {
-    variables: { id: address.toLowerCase() },
+    variables: { id: campaignId },
     skip: !address,
   });
 
@@ -31,20 +38,30 @@ export default function CampaignDetailPage() {
 
   // Fetch campaign content from Arweave
   useEffect(() => {
-    if (campaign?.campaignCID) {
-      setContentLoading(true);
-      fetch(`https://arweave.net/${campaign.campaignCID}`)
-        .then((res) => res.json())
-        .then((content: CampaignContent) => {
-          setCampaignContent(content);
-        })
-        .catch((err) => {
+    if (!campaign?.campaignCID) return;
+
+    const abortController = new AbortController();
+    setContentLoading(true);
+    
+    fetch(`https://arweave.net/${campaign.campaignCID}`, {
+      signal: abortController.signal,
+    })
+      .then((res) => res.json())
+      .then((content: CampaignContent) => {
+        setCampaignContent(content);
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
           console.error('Failed to fetch campaign content:', err);
-        })
-        .finally(() => {
-          setContentLoading(false);
-        });
-    }
+        }
+      })
+      .finally(() => {
+        setContentLoading(false);
+      });
+
+    return () => {
+      abortController.abort();
+    };
   }, [campaign?.campaignCID]);
 
   // Loading state
@@ -116,7 +133,7 @@ export default function CampaignDetailPage() {
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Campaign Header */}
-        <CampaignHeader campaign={campaign} />
+        <CampaignHeader campaign={campaign} campaignContent={campaignContent} />
 
         {/* Main Content Grid */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">

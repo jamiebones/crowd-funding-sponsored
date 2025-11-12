@@ -1,4 +1,4 @@
-import { Campaign } from '@/types/campaign';
+import { Campaign, CampaignContent } from '@/types/campaign';
 import { CATEGORIES } from '@/lib/constants';
 import { Calendar, User, ExternalLink, Settings } from 'lucide-react';
 import Link from 'next/link';
@@ -6,13 +6,17 @@ import { useAccount } from 'wagmi';
 
 interface CampaignHeaderProps {
   campaign: Campaign;
+  campaignContent?: CampaignContent | null;
 }
 
-export function CampaignHeader({ campaign }: CampaignHeaderProps) {
+export function CampaignHeader({ campaign, campaignContent }: CampaignHeaderProps) {
   const { address: walletAddress } = useAccount();
   const category = CATEGORIES.find((c) => c.id === campaign.category);
   const createdDate = new Date(parseInt(campaign.dateCreated) * 1000);
   const isOwner = walletAddress && campaign.owner.id.toLowerCase() === walletAddress.toLowerCase();
+
+  // Use campaignContent.title if available, otherwise fall back to campaign.content.title
+  const displayTitle = campaignContent?.title || campaign.content?.title || campaign.title || 'Untitled Campaign';
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
@@ -32,7 +36,7 @@ export function CampaignHeader({ campaign }: CampaignHeaderProps) {
         
         {isOwner && (
           <Link
-            href={`/projects/${campaign.id}/manage`}
+            href={`/projects/${campaign.contractAddress || campaign.id}/manage`}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
           >
             <Settings className="w-4 h-4" />
@@ -63,7 +67,7 @@ export function CampaignHeader({ campaign }: CampaignHeaderProps) {
 
       {/* Title */}
       <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-        {campaign.title}
+        {displayTitle}
       </h1>
 
       {/* Meta Info */}

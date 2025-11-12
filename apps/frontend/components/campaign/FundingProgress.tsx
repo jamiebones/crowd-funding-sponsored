@@ -113,7 +113,8 @@ export function FundingProgress({ campaign }: FundingProgressProps) {
           <button
             onClick={() => {
               const url = window.location.href;
-              const text = `Check out this campaign: ${campaign.title}`;
+              const title = campaign.content?.title || campaign.title || 'Campaign';
+              const text = `Check out this campaign: ${title}`;
               window.open(
                 `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
                 '_blank'

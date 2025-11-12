@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useQuery } from '@apollo/client/react';
 import { useRouter } from 'next/navigation';
@@ -18,16 +18,22 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('campaigns');
 
-  // Redirect if not connected
-  if (!isConnected) {
-    router.push('/');
-    return null;
-  }
+  // Redirect if not connected (client-side only)
+  useEffect(() => {
+    if (!isConnected) {
+      router.push('/');
+    }
+  }, [isConnected, router]);
 
   const { data, loading: statsLoading } = useQuery(GET_DASHBOARD_STATS, {
     variables: { address: address?.toLowerCase() },
     skip: !address,
   });
+
+  // Don't render if not connected
+  if (!isConnected) {
+    return null;
+  }
 
   const stats = data as any;
 

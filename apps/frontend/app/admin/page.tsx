@@ -403,7 +403,7 @@ export default function AdminPage() {
                       <tr key={campaign.id} className="border-b border-gray-100 dark:border-gray-700">
                         <td className="py-3 px-4">
                           <p className="font-medium text-gray-900 dark:text-white line-clamp-1">
-                            {campaign.title}
+                            {campaign.content?.title || campaign.title || 'Untitled Campaign'}
                           </p>
                         </td>
                         <td className="py-3 px-4">

@@ -5,19 +5,22 @@ export const GET_USER_CAMPAIGNS = gql`
   query GetUserCampaigns($owner: String!) {
     campaigns(
       where: { owner_: { id: $owner } }
-      orderBy: createdAt
+      orderBy: dateCreated
       orderDirection: desc
     ) {
       id
+      contractAddress
       campaignCID
       category
-      title
+      content {
+        title
+      }
       amountSought
       amountRaised
       backers
       campaignRunning
-      createdAt
-      endTime
+      dateCreated
+      endDate
       owner {
         id
       }
@@ -38,7 +41,9 @@ export const GET_USER_DONATIONS = gql`
       timestamp
       campaign {
         id
-        title
+        content {
+          title
+        }
         category
         campaignRunning
       }
@@ -62,7 +67,9 @@ export const GET_USER_WITHDRAWALS = gql`
       timestamp
       campaign {
         id
-        title
+        content {
+          title
+        }
       }
       donor {
         id
@@ -90,7 +97,9 @@ export const GET_USER_VOTES = gql`
         periodToVote
         campaign {
           id
-          title
+          content {
+            title
+          }
           category
         }
       }

@@ -115,7 +115,7 @@ export function MyDonations({ address }: MyDonationsProps) {
                       href={`/projects/${activity.campaign.id}`}
                       className="text-gray-900 dark:text-white font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
-                      {activity.campaign.title}
+                      {activity.campaign.content?.title || activity.campaign.title || 'Untitled Campaign'}
                     </Link>
 
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
