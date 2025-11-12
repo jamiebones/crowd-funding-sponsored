@@ -4,7 +4,7 @@ import { gql } from '@apollo/client';
 export const GET_USER_CAMPAIGNS = gql`
   query GetUserCampaigns($owner: String!) {
     campaigns(
-      where: { owner_: { id: $owner } }
+      where: { owner: $owner }
       orderBy: dateCreated
       orderDirection: desc
     ) {
@@ -32,15 +32,17 @@ export const GET_USER_CAMPAIGNS = gql`
 export const GET_USER_DONATIONS = gql`
   query GetUserDonations($donor: String!) {
     donations(
-      where: { donor_: { id: $donor } }
+      where: { donor: $donor }
       orderBy: timestamp
       orderDirection: desc
     ) {
       id
       amount
       timestamp
-      campaign {
+      donatingTo {
         id
+        contractAddress
+        campaignCID
         content {
           title
         }
@@ -57,19 +59,23 @@ export const GET_USER_DONATIONS = gql`
 // Get user's withdrawals
 export const GET_USER_WITHDRAWALS = gql`
   query GetUserWithdrawals($donor: String!) {
-    withdrawals(
-      where: { donor_: { id: $donor } }
+    donorWithdrawals(
+      where: { donor: $donor }
       orderBy: timestamp
       orderDirection: desc
     ) {
       id
       amount
       timestamp
-      campaign {
+      withdrawingFrom {
         id
+        contractAddress
+        campaignCID
         content {
           title
         }
+        category
+        campaignRunning
       }
       donor {
         id
@@ -132,8 +138,8 @@ export const GET_USER_CREATOR_PROFILE = gql`
     campaignCreator(id: $id) {
       id
       totalCampaigns
-      totalRaised
-      campaigns {
+      fundingGiven
+      createdCampaigns {
         id
         amountRaised
         campaignRunning
@@ -153,12 +159,12 @@ export const GET_DASHBOARD_STATS = gql`
     campaignCreator(id: $address) {
       id
       totalCampaigns
-      totalRaised
+      fundingGiven
     }
-    campaigns(where: { owner_: { id: $address } }) {
+    campaigns(where: { owner: $address }) {
       id
     }
-    donations(where: { donor_: { id: $address } }) {
+    donations(where: { donor: $address }) {
       id
     }
     votes(where: { voter: $address }) {

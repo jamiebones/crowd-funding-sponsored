@@ -35,6 +35,7 @@ export const GET_RECENT_CAMPAIGNS = gql`
       orderDirection: desc
     ) {
       id
+      campaignCID
       content {
         title
       }

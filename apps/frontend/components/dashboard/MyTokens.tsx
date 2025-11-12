@@ -4,9 +4,16 @@ import Link from 'next/link';
 import { CATEGORIES } from '@/lib/constants';
 import { Coins, TrendingUp, Award, ExternalLink, Calendar, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { fetchArweaveTitles, getDisplayTitle } from '@/lib/fetchArweaveTitles';
 
 interface MyTokensProps {
   address: string;
+}
+
+interface DonationWithContent {
+  [key: string]: any;
+  fetchedTitle?: string;
 }
 
 export function MyTokens({ address }: MyTokensProps) {
@@ -18,6 +25,38 @@ export function MyTokens({ address }: MyTokensProps) {
     variables: { donor: address.toLowerCase() },
   });
 
+  const [donationsWithTitles, setDonationsWithTitles] = useState<DonationWithContent[]>([]);
+
+  const donor = (donorData as any)?.donor;
+  const rawDonations = (donationsData as any)?.donations || [];
+  
+  // Map donatingTo to campaign for consistent access
+  const donations = rawDonations.map((d: any) => ({
+    ...d,
+    campaign: d.donatingTo
+  }));
+
+  // Fetch titles from Arweave for campaigns without content.title
+  useEffect(() => {
+    if (donations.length === 0) return;
+
+    const fetchTitles = async () => {
+      const updatedDonations = await fetchArweaveTitles(
+        donations,
+        (donation) => donation.campaign?.campaignCID,
+        (donation) => !!donation.campaign?.content?.title
+      );
+      setDonationsWithTitles(updatedDonations);
+    };
+
+    fetchTitles();
+  }, [donationsData]);
+
+  // Calculate token balance
+  const totalDonated = donor ? parseFloat(donor.totalDonated) : 0;
+  const totalWithdrawn = donor ? parseFloat(donor.totalWithdrawn) : 0;
+  const tokenBalance = (totalDonated - totalWithdrawn) / 1e18;
+
   if (donorLoading || donationsLoading) {
     return (
       <div className="space-y-4">
@@ -28,14 +67,6 @@ export function MyTokens({ address }: MyTokensProps) {
       </div>
     );
   }
-
-  const donor = (donorData as any)?.donor;
-  const donations = (donationsData as any)?.donations || [];
-
-  // Calculate token balance
-  const totalDonated = donor ? parseFloat(donor.totalDonated) : 0;
-  const totalWithdrawn = donor ? parseFloat(donor.totalWithdrawn) : 0;
-  const tokenBalance = (totalDonated - totalWithdrawn) / 1e18;
 
   return (
     <div className="space-y-6">
@@ -129,9 +160,11 @@ export function MyTokens({ address }: MyTokensProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {donations.map((donation: any) => {
+            {(donationsWithTitles.length > 0 ? donationsWithTitles : donations).map((donation: any) => {
               const category = CATEGORIES.find((c) => c.id === donation.campaign.category);
               const amount = (parseFloat(donation.amount) / 1e18).toFixed(4);
+              
+              const displayTitle = getDisplayTitle(donation.campaign);
               
               return (
                 <div
@@ -161,10 +194,10 @@ export function MyTokens({ address }: MyTokensProps) {
                           </div>
                           
                           <Link
-                            href={`/projects/${donation.campaign.id}`}
+                            href={`/projects/${donation.campaign.contractAddress || donation.campaign.id}`}
                             className="text-gray-900 dark:text-white font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                           >
-                            {donation.campaign.content?.title || donation.campaign.title || 'Untitled Campaign'}
+                            {displayTitle}
                           </Link>
 
                           <div className="flex items-center gap-1 mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -189,7 +222,7 @@ export function MyTokens({ address }: MyTokensProps) {
 
                     {/* Link */}
                     <Link
-                      href={`/projects/${donation.campaign.id}`}
+                      href={`/projects/${donation.campaign.contractAddress || donation.campaign.id}`}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     >
                       <ExternalLink className="w-4 h-4 text-gray-400" />

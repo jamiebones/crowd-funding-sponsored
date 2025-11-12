@@ -4,21 +4,66 @@ import Link from 'next/link';
 import { CATEGORIES } from '@/lib/constants';
 import { Heart, ArrowDownLeft, ExternalLink, Calendar } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { fetchArweaveTitles, getDisplayTitle } from '@/lib/fetchArweaveTitles';
 
 interface MyDonationsProps {
   address: string;
 }
 
+interface ActivityWithContent {
+  [key: string]: any;
+  fetchedTitle?: string;
+}
+
 export function MyDonations({ address }: MyDonationsProps) {
-  const { data: donationsData, loading: donationsLoading } = useQuery(GET_USER_DONATIONS, {
+  const { data: donationsData, loading: donationsLoading, error: donationsError } = useQuery(GET_USER_DONATIONS, {
     variables: { donor: address.toLowerCase() },
+    fetchPolicy: 'network-only',
   });
 
-  const { data: withdrawalsData, loading: withdrawalsLoading } = useQuery(GET_USER_WITHDRAWALS, {
+  const { data: withdrawalsData, loading: withdrawalsLoading, error: withdrawalsError } = useQuery(GET_USER_WITHDRAWALS, {
     variables: { donor: address.toLowerCase() },
+    fetchPolicy: 'network-only',
   });
+
+  const [activitiesWithTitles, setActivitiesWithTitles] = useState<ActivityWithContent[]>([]);
 
   const loading = donationsLoading || withdrawalsLoading;
+
+  // Process data regardless of loading state
+  const donations = (donationsData as any)?.donations || [];
+  const withdrawals = (withdrawalsData as any)?.donorWithdrawals || [];
+
+  // Combine and sort by timestamp
+  const activities = [
+    ...donations.map((d: any) => ({ 
+      ...d, 
+      type: 'donation',
+      campaign: d.donatingTo // Map donatingTo to campaign for consistent access
+    })),
+    ...withdrawals.map((w: any) => ({ 
+      ...w, 
+      type: 'withdrawal',
+      campaign: w.withdrawingFrom // Map withdrawingFrom to campaign for consistent access
+    })),
+  ].sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+
+  // Fetch titles from Arweave for campaigns without content.title
+  useEffect(() => {
+    if (activities.length === 0) return;
+
+    const fetchTitles = async () => {
+      const updatedActivities = await fetchArweaveTitles(
+        activities,
+        (activity) => activity.campaign?.campaignCID,
+        (activity) => !!activity.campaign?.content?.title
+      );
+      setActivitiesWithTitles(updatedActivities);
+    };
+
+    fetchTitles();
+  }, [donationsData, withdrawalsData]);
 
   if (loading) {
     return (
@@ -33,16 +78,7 @@ export function MyDonations({ address }: MyDonationsProps) {
     );
   }
 
-  const donations = (donationsData as any)?.donations || [];
-  const withdrawals = (withdrawalsData as any)?.withdrawals || [];
-
-  // Combine and sort by timestamp
-  const activities = [
-    ...donations.map((d: any) => ({ ...d, type: 'donation' })),
-    ...withdrawals.map((w: any) => ({ ...w, type: 'withdrawal' })),
-  ].sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-
-  if (activities.length === 0) {
+  if (activities.length === 0 && activitiesWithTitles.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg p-12 text-center">
         <div className="max-w-md mx-auto">
@@ -68,11 +104,13 @@ export function MyDonations({ address }: MyDonationsProps) {
 
   return (
     <div className="space-y-3">
-      {activities.map((activity: any) => {
+      {(activitiesWithTitles.length > 0 ? activitiesWithTitles : activities).map((activity: any) => {
         const isDonation = activity.type === 'donation';
         const category = CATEGORIES.find((c) => c.id === activity.campaign.category);
         const amount = (parseFloat(activity.amount) / 1e18).toFixed(4);
-
+        
+        const displayTitle = getDisplayTitle(activity.campaign);
+        
         return (
           <div
             key={activity.id}
@@ -112,10 +150,10 @@ export function MyDonations({ address }: MyDonationsProps) {
                     </div>
                     
                     <Link
-                      href={`/projects/${activity.campaign.id}`}
+                      href={`/projects/${activity.campaign.contractAddress || activity.campaign.id}`}
                       className="text-gray-900 dark:text-white font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
-                      {activity.campaign.content?.title || activity.campaign.title || 'Untitled Campaign'}
+                      {displayTitle}
                     </Link>
 
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -155,7 +193,7 @@ export function MyDonations({ address }: MyDonationsProps) {
 
               {/* Link */}
               <Link
-                href={`/projects/${activity.campaign.id}`}
+                href={`/projects/${activity.campaign.contractAddress || activity.campaign.id}`}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <ExternalLink className="w-4 h-4 text-gray-400" />

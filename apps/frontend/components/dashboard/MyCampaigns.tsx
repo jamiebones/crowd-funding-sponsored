@@ -5,6 +5,7 @@ import { CATEGORIES } from '@/lib/constants';
 import { ExternalLink, TrendingUp, Users, Calendar, Edit } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { fetchArweaveTitles, getDisplayTitle } from '@/lib/fetchArweaveTitles';
 
 interface MyCampaignsProps {
   address: string;
@@ -28,27 +29,10 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
     if (campaigns.length === 0) return;
 
     const fetchTitles = async () => {
-      const updatedCampaigns = await Promise.all(
-        campaigns.map(async (campaign: any) => {
-          // If title exists in subgraph, use it
-          if (campaign.content?.title) {
-            return campaign;
-          }
-
-          // Otherwise, fetch from Arweave
-          if (campaign.campaignCID) {
-            try {
-              const response = await fetch(`https://arweave.net/${campaign.campaignCID}`);
-              const content = await response.json();
-              return { ...campaign, fetchedTitle: content.title };
-            } catch (err) {
-              console.error('Failed to fetch title for', campaign.id, err);
-              return campaign;
-            }
-          }
-
-          return campaign;
-        })
+      const updatedCampaigns = await fetchArweaveTitles(
+        campaigns,
+        (campaign) => campaign.campaignCID,
+        (campaign) => !!campaign.content?.title
       );
       setCampaignsWithTitles(updatedCampaigns);
     };
@@ -113,8 +97,7 @@ export function MyCampaigns({ address }: MyCampaignsProps) {
         const endDate = campaign.endDate ? new Date(parseInt(campaign.endDate) * 1000) : null;
         const isEnded = endDate ? endDate < new Date() : !campaign.campaignRunning;
 
-        // Use fetchedTitle if content.title is not available
-        const displayTitle = campaign.content?.title || campaign.fetchedTitle || campaign.title || 'Untitled Campaign';
+        const displayTitle = getDisplayTitle(campaign);
 
         return (
           <div

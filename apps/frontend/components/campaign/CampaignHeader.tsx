@@ -1,5 +1,5 @@
 import { Campaign, CampaignContent } from '@/types/campaign';
-import { CATEGORIES } from '@/lib/constants';
+import { CATEGORIES, BLOCK_EXPLORER } from '@/lib/constants';
 import { Calendar, User, ExternalLink, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
@@ -87,7 +87,7 @@ export function CampaignHeader({ campaign, campaignContent }: CampaignHeaderProp
           </Link>
         </div>
         <a
-          href={`${process.env.NEXT_PUBLIC_BLOCK_EXPLORER}/address/${campaign.id}`}
+          href={`${BLOCK_EXPLORER}/address/${campaign.contractAddress || campaign.id}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"

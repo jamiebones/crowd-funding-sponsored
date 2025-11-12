@@ -17,56 +17,95 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('campaigns');
+  const [stats, setStats] = useState<any>({});
 
-  // Redirect if not connected (client-side only)
   useEffect(() => {
     if (!isConnected) {
       router.push('/');
     }
-  }, [isConnected, router]);
+  }, [isConnected]);
 
-  const { data, loading: statsLoading } = useQuery(GET_DASHBOARD_STATS, {
+  const { data, loading, error } = useQuery(GET_DASHBOARD_STATS, {
     variables: { address: address?.toLowerCase() },
     skip: !address,
+    fetchPolicy: 'network-only'
   });
 
-  // Don't render if not connected
-  if (!isConnected) {
+  useEffect(() => {
+    if (data) {
+      console.log('Dashboard data received:', data);
+      setStats(data);
+    }
+  }, [data]);
+
+  if (!isConnected && data === undefined) {
     return null;
   }
 
-  const stats = data as any;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading user dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Error loading dashboard: {error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Use data directly from query, fallback to stats state
+  const dashboardData = data || stats;
+
+  console.log("Dashboard data being used:", dashboardData);
+
+  const campaignsCreated = dashboardData.campaignCreator?.totalCampaigns 
+    ? parseInt(dashboardData.campaignCreator.totalCampaigns) 
+    : dashboardData.campaigns?.length || 0;
+  
+  console.log("stats values", dashboardData.donor?.totalDonated);
+  const totalRaised = dashboardData.campaignCreator?.fundingGiven || '0';
+  const totalDonated = dashboardData.donor?.totalDonated || '0';
+  const votesCast = dashboardData.votes?.length || 0;
 
   const tabs = [
     {
       id: 'campaigns' as TabType,
       label: 'My Campaigns',
       icon: LayoutDashboard,
-      count: stats?.campaigns?.length || 0,
+      count: dashboardData.campaigns?.length || 0,
     },
     {
       id: 'donations' as TabType,
       label: 'My Donations',
       icon: Heart,
-      count: stats?.donations?.length || 0,
+      count: dashboardData.donations?.length || 0,
     },
     {
       id: 'votes' as TabType,
       label: 'My Votes',
       icon: Vote,
-      count: stats?.votes?.length || 0,
+      count: dashboardData.votes?.length || 0,
     },
     {
       id: 'tokens' as TabType,
       label: 'My Tokens',
       icon: Coins,
-      count: null, // Token count is different
+      count: null,
     },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-3 mb-6">
@@ -75,7 +114,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Dashboard
+                Dashboard 
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 Manage your campaigns, donations, and activity
@@ -83,7 +122,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-center justify-between">
@@ -92,7 +130,7 @@ export default function DashboardPage() {
                     Campaigns Created
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {statsLoading ? '...' : stats?.campaignCreator?.totalCampaigns || 0}
+                    {campaignsCreated}
                   </p>
                 </div>
                 <LayoutDashboard className="w-8 h-8 text-blue-600 dark:text-blue-400 opacity-50" />
@@ -106,7 +144,7 @@ export default function DashboardPage() {
                     Total Raised
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {statsLoading ? '...' : `${(parseFloat(stats?.campaignCreator?.totalRaised || '0') / 1e18).toFixed(2)} BNB`}
+                    {(parseFloat(totalRaised) / 1e18).toFixed(2)} BNB
                   </p>
                 </div>
                 <Coins className="w-8 h-8 text-green-600 dark:text-green-400 opacity-50" />
@@ -120,7 +158,7 @@ export default function DashboardPage() {
                     Total Donated
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {statsLoading ? '...' : `${(parseFloat(stats?.donor?.totalDonated || '0') / 1e18).toFixed(2)} BNB`}
+                    {dashboardData.donor?.totalDonated / 1e18}  BNB
                   </p>
                 </div>
                 <Heart className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-50" />
@@ -134,7 +172,7 @@ export default function DashboardPage() {
                     Votes Cast
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {statsLoading ? '...' : stats?.votes?.length || 0}
+                    {votesCast}
                   </p>
                 </div>
                 <Vote className="w-8 h-8 text-orange-600 dark:text-orange-400 opacity-50" />
@@ -144,7 +182,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="flex -mb-px space-x-8 overflow-x-auto" aria-label="Tabs">
@@ -183,7 +220,6 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        {/* Tab Content */}
         <div className="py-8">
           {activeTab === 'campaigns' && <MyCampaigns address={address!} />}
           {activeTab === 'donations' && <MyDonations address={address!} />}

@@ -4,17 +4,21 @@ export const GET_USER_PROFILE = gql`
   query GetUserProfile($address: String!) {
     campaignCreator(id: $address) {
       id
-      totalCampaignsCreated
-      campaigns {
+      totalCampaigns
+      fundingGiven
+      createdCampaigns {
         id
-        title
+        contractAddress
+        campaignCID
         category
         amountSought
         amountRaised
         backers
         campaignRunning
         dateCreated
-        campaignCID
+        content {
+          title
+        }
       }
     }
     donor(id: $address) {
@@ -24,23 +28,30 @@ export const GET_USER_PROFILE = gql`
       donations {
         id
         amount
-        dateCreated
-        campaign {
+        timestamp
+        donatingTo {
           id
-          title
+          contractAddress
           campaignCID
+          content {
+            title
+          }
         }
       }
-      votes {
+    }
+    votes(where: { voter: $address }) {
+      id
+      support
+      weight
+      timestamp
+      milestone {
         id
-        support
-        weight
-        dateCreated
-        milestone {
+        milestoneCID
+        campaign {
           id
-          milestoneCID
-          campaign {
-            id
+          contractAddress
+          campaignCID
+          content {
             title
           }
         }

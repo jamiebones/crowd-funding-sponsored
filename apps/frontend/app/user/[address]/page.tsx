@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { CATEGORY_LABELS } from '@/lib/constants';
+import { fetchArweaveTitles, getDisplayTitle } from '@/lib/fetchArweaveTitles';
 
 const BLOCK_EXPLORER = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || 'https://testnet.bscscan.com';
 
@@ -30,6 +31,8 @@ export default function UserProfilePage() {
   const [activeTab, setActiveTab] = useState<'campaigns' | 'donations'>('campaigns');
   const [copiedAddress, setCopiedAddress] = useState(false);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [campaignsWithTitles, setCampaignsWithTitles] = useState<any[]>([]);
+  const [donationsWithTitles, setDonationsWithTitles] = useState<any[]>([]);
 
   const { data, loading, error } = useQuery(GET_USER_PROFILE, {
     variables: { address: address?.toLowerCase() },
@@ -38,10 +41,11 @@ export default function UserProfilePage() {
 
   const campaignCreator = (data as any)?.campaignCreator;
   const donor = (data as any)?.donor;
+  const votes = (data as any)?.votes || [];
 
   // Calculate statistics
-  const totalCampaignsCreated = campaignCreator?.totalCampaignsCreated || 0;
-  const campaigns = campaignCreator?.campaigns || [];
+  const totalCampaignsCreated = campaignCreator?.totalCampaigns || 0;
+  const campaigns = campaignCreator?.createdCampaigns || [];
   const activeCampaigns = campaigns.filter((c: any) => c.campaignRunning).length;
   const endedCampaigns = campaigns.filter((c: any) => !c.campaignRunning).length;
   
@@ -53,7 +57,38 @@ export default function UserProfilePage() {
   const totalWithdrawn = donor?.totalWithdrawn || '0';
   const netDonated = BigInt(totalDonated) - BigInt(totalWithdrawn);
   const donations = donor?.donations || [];
-  const votes = donor?.votes || [];
+
+  // Fetch titles from Arweave for campaigns without content.title
+  useEffect(() => {
+    if (campaigns.length === 0) return;
+
+    const fetchCampaignTitles = async () => {
+      const updatedCampaigns = await fetchArweaveTitles(
+        campaigns,
+        (campaign) => campaign.campaignCID,
+        (campaign) => !!campaign.content?.title
+      );
+      setCampaignsWithTitles(updatedCampaigns);
+    };
+
+    fetchCampaignTitles();
+  }, [data]);
+
+  // Fetch titles from Arweave for donations
+  useEffect(() => {
+    if (donations.length === 0) return;
+
+    const fetchDonationTitles = async () => {
+      const updatedDonations = await fetchArweaveTitles(
+        donations,
+        (donation) => donation.donatingTo?.campaignCID,
+        (donation) => !!donation.donatingTo?.content?.title
+      );
+      setDonationsWithTitles(updatedDonations);
+    };
+
+    fetchDonationTitles();
+  }, [data]);
 
   // Shorten address display
   const shortenAddress = (addr: string) => {
@@ -332,21 +367,23 @@ export default function UserProfilePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {campaigns.map((campaign: any) => {
+                    {(campaignsWithTitles.length > 0 ? campaignsWithTitles : campaigns).map((campaign: any) => {
                       const percentage = getFundingPercentage(
                         campaign.amountRaised,
                         campaign.amountSought
                       );
 
+                      const displayTitle = getDisplayTitle(campaign);
+
                       return (
                         <Link
                           key={campaign.id}
-                          href={`/projects/${campaign.id}`}
+                          href={`/projects/${campaign.contractAddress || campaign.id}`}
                           className="block bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow"
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2 flex-1">
-                              {campaign.content?.title || campaign.title || 'Untitled Campaign'}
+                              {displayTitle}
                             </h3>
                             {campaign.campaignRunning ? (
                               <span className="ml-2 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full whitespace-nowrap">
@@ -421,36 +458,40 @@ export default function UserProfilePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {donations.map((donation: any) => (
-                      <Link
-                        key={donation.id}
-                        href={`/projects/${donation.campaign.id}`}
-                        className="block bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                              {donation.campaign.content?.title || donation.campaign.title || 'Untitled Campaign'}
-                            </h3>
-                            <div className="flex items-center gap-4 text-sm">
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">Donated: </span>
-                                <span className="font-semibold text-gray-900 dark:text-white">
-                                  {parseFloat(formatEther(BigInt(donation.amount))).toFixed(4)} BNB
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                                <Clock className="h-3 w-3" />
-                                {formatDistanceToNow(new Date(Number(donation.dateCreated) * 1000), {
-                                  addSuffix: true,
-                                })}
+                    {(donationsWithTitles.length > 0 ? donationsWithTitles : donations).map((donation: any) => {
+                      const displayTitle = donation.donatingTo?.content?.title || donation.fetchedTitle || donation.donatingTo?.title || 'Untitled Campaign';
+                      
+                      return (
+                        <Link
+                          key={donation.id}
+                          href={`/projects/${donation.donatingTo.contractAddress || donation.donatingTo.id}`}
+                          className="block bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                                {displayTitle}
+                              </h3>
+                              <div className="flex items-center gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-600 dark:text-gray-400">Donated: </span>
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {parseFloat(formatEther(BigInt(donation.amount))).toFixed(4)} BNB
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDistanceToNow(new Date(Number(donation.timestamp) * 1000), {
+                                    addSuffix: true,
+                                  })}
+                                </div>
                               </div>
                             </div>
+                            <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0 ml-4" />
                           </div>
-                          <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0 ml-4" />
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

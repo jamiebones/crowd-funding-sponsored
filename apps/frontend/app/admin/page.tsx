@@ -25,6 +25,7 @@ import {
 import { useState, useEffect, useMemo } from 'react';
 import FACTORY_CONTRACT from '@/abis/CrowdFundingFactory.json';
 import { FACTORY_ADDRESS, BLOCK_EXPLORER, CATEGORY_LABELS } from '@/lib/constants';
+import { fetchArweaveTitles, getDisplayTitle } from '@/lib/fetchArweaveTitles';
 
 const FACTORY_ABI = FACTORY_CONTRACT.abi;
 
@@ -34,6 +35,7 @@ export default function AdminPage() {
   const [newFee, setNewFee] = useState('');
   const [showSetFeeModal, setShowSetFeeModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [campaignsWithTitles, setCampaignsWithTitles] = useState<any[]>([]);
 
   // Read factory owner
   const { data: factoryOwner } = useReadContract({
@@ -49,11 +51,16 @@ export default function AdminPage() {
     functionName: 'getFundingFee',
   });
 
-  // Get factory balance
-  const { data: factoryBalance, refetch: refetchBalance } = useBalance({
+  // Get factory balance using contract's getBalance function
+  const { data: factoryBalanceData, refetch: refetchBalance } = useReadContract({
     address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: 'getBalance',
   });
 
+  const factoryBalance = factoryBalanceData ? BigInt(factoryBalanceData as bigint) : BigInt(0);
+
+  console.log("factory balance : ", factoryBalance.toString());
   // Set funding fee
   const {
     writeContract: setFundingFee,
@@ -90,6 +97,22 @@ export default function AdminPage() {
   const donors = (statsData as any)?.donors || [];
   const milestones = (statsData as any)?.milestones || [];
   const votes = (statsData as any)?.votes || [];
+
+  // Fetch titles from Arweave for campaigns without content.title
+  useEffect(() => {
+    if (campaigns.length === 0) return;
+
+    const fetchTitles = async () => {
+      const updatedCampaigns = await fetchArweaveTitles(
+        campaigns,
+        (campaign) => campaign.campaignCID,
+        (campaign) => !!campaign.content?.title
+      );
+      setCampaignsWithTitles(updatedCampaigns);
+    };
+
+    fetchTitles();
+  }, [campaignsData]);
 
   // Check if user is owner
   const isOwner = address && factoryOwner && address.toLowerCase() === (factoryOwner as string).toLowerCase();
@@ -247,7 +270,7 @@ export default function AdminPage() {
               <DollarSign className="h-5 w-5 text-purple-600" />
             </div>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {factoryBalance ? parseFloat(formatEther(factoryBalance.value)).toFixed(4) : '0.0000'}
+              {factoryBalance ? (Number(factoryBalance.toString()) / 1e18).toFixed(9) : '0.0000'}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">BNB</p>
           </div>
@@ -337,13 +360,13 @@ export default function AdminPage() {
             <div className="mb-4">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Available Balance:</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {factoryBalance ? parseFloat(formatEther(factoryBalance.value)).toFixed(4) : '0.0000'} BNB
+                {factoryBalance ? parseFloat(formatEther(factoryBalance)).toFixed(9) : '0.0000'} BNB
               </p>
             </div>
 
             <button
               onClick={() => setShowWithdrawModal(true)}
-              disabled={!factoryBalance || factoryBalance.value === BigInt(0)}
+              disabled={!factoryBalance || factoryBalance === BigInt(0)}
               className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Withdraw All
@@ -392,20 +415,22 @@ export default function AdminPage() {
                       Action
                     </th>
                   </tr>
-                </thead>
-                <tbody>
-                  {campaigns.map((campaign: any) => {
-                    const percentage = campaign.amountSought !== '0' 
-                      ? Number((BigInt(campaign.amountRaised) * BigInt(10000)) / BigInt(campaign.amountSought)) / 100
-                      : 0;
+              </thead>
+              <tbody>
+                {(campaignsWithTitles.length > 0 ? campaignsWithTitles : campaigns).map((campaign: any) => {
+                  const percentage = campaign.amountSought !== '0' 
+                    ? Number((BigInt(campaign.amountRaised) * BigInt(10000)) / BigInt(campaign.amountSought)) / 100
+                    : 0;
 
-                    return (
-                      <tr key={campaign.id} className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-3 px-4">
-                          <p className="font-medium text-gray-900 dark:text-white line-clamp-1">
-                            {campaign.content?.title || campaign.title || 'Untitled Campaign'}
-                          </p>
-                        </td>
+                  const displayTitle = getDisplayTitle(campaign);
+
+                  return (
+                    <tr key={campaign.id} className="border-b border-gray-100 dark:border-gray-700">
+                      <td className="py-3 px-4">
+                        <p className="font-medium text-gray-900 dark:text-white line-clamp-1">
+                          {displayTitle}
+                        </p>
+                      </td>
                         <td className="py-3 px-4">
                           <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded">
                             {CATEGORY_LABELS[campaign.category]}
@@ -583,7 +608,7 @@ export default function AdminPage() {
                     <p className="text-sm text-yellow-700 dark:text-yellow-300">
                       You are about to withdraw{' '}
                       <strong>
-                        {factoryBalance ? parseFloat(formatEther(factoryBalance.value)).toFixed(4) : '0'} BNB
+                        {factoryBalance ? parseFloat(formatEther(factoryBalance)).toFixed(4) : '0'} BNB
                       </strong>{' '}
                       from the factory contract.
                     </p>
