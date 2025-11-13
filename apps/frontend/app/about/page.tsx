@@ -13,6 +13,8 @@ import {
 import Link from 'next/link';
 
 export default function AboutPage() {
+  const factoryAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;
+  
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Hero Section */}
@@ -509,7 +511,7 @@ export default function AboutPage() {
             </a>
             <span className="hidden sm:inline text-gray-400">|</span>
             <a
-              href="https://testnet.bscscan.com/address/0x9C413E92bf610Ccd0Cd044c3ba25876764AB8FDD"
+              href={`https://testnet.bscscan.com/address/${factoryAddress}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline font-medium"

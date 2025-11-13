@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useQuery } from '@apollo/client/react';
+import { useAccount } from 'wagmi';
 import { GET_USER_PROFILE } from '@/lib/queries/user-profile';
 import { formatEther } from 'viem';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,6 +29,7 @@ const BLOCK_EXPLORER = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || 'https://testne
 export default function UserProfilePage() {
   const params = useParams();
   const address = params.address as string;
+  const { address: connectedAddress, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState<'campaigns' | 'donations'>('campaigns');
   const [copiedAddress, setCopiedAddress] = useState(false);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -38,6 +40,9 @@ export default function UserProfilePage() {
     variables: { address: address?.toLowerCase() },
     skip: !address,
   });
+
+  // Check if connected wallet matches the URL address
+  const isOwner = isConnected && connectedAddress?.toLowerCase() === address?.toLowerCase();
 
   // Debug logging
   useEffect(() => {
@@ -150,6 +155,32 @@ export default function UserProfilePage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is authorized to view this profile
+  if (!isOwner) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-4">
+            <ExternalLink className="h-10 w-10 text-yellow-600 dark:text-yellow-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Connect Your Wallet
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please connect the wallet address ({shortenAddress(address)}) to view this profile.
+          </p>
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Explore Campaigns
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     );

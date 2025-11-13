@@ -13,11 +13,11 @@ export function Success({ formData }: SuccessProps) {
   const chainId = useChainId();
 
   // Get block explorer URL based on chain
-  const getBlockExplorerUrl = (txHash: string) => {
+  const getBlockExplorerUrl = (address: string) => {
     const baseUrl = chainId === 56 
       ? 'https://bscscan.com' 
       : 'https://testnet.bscscan.com';
-    return `${baseUrl}/tx/${txHash}`;
+    return `${baseUrl}/address/${address}`;
   };
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export function Success({ formData }: SuccessProps) {
         <div className="space-y-3 text-left">
           {formData.campaignAddress && (
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Transaction Hash</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Contract Address</p>
               <div className="flex items-center gap-2 mt-1">
                 <code className="text-sm bg-white dark:bg-gray-800 px-3 py-1 rounded border border-gray-300 dark:border-gray-600 flex-1 font-mono">
                   {formData.campaignAddress}

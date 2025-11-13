@@ -8,6 +8,11 @@ export const GET_MILESTONE_DETAIL = gql`
       status
       periodToVote
       dateCreated
+      content {
+        title
+        details
+        media
+      }
       campaign {
         id
         content {

@@ -14,7 +14,7 @@ enum MilestoneStatus {
     Declined
 }
 
-import { Campaign as CampaignTemplate } from "../generated/templates";
+import { Campaign as CampaignTemplate, ArweaveContentMilestone, ArweaveContentCampaign } from "../generated/templates";
 
 import {
     MilestoneCreated as MilestoneCreatedEvent,
@@ -76,6 +76,21 @@ export function handleNewCrowdFundingContractCreated(
     ]);
 
     CampaignTemplate.create(event.params.contractAddress);
+
+    // Create Arweave data source to fetch campaign content
+    let campaignContext = new DataSourceContext();
+    campaignContext.setBytes(CAMPAIGN_ID_KEY, newCampaign.id);
+
+    log.info('Creating Arweave data source for campaign content: {}', [
+        'Campaign CID: ' + event.params.contractDetailsId,
+        'Campaign ID: ' + newCampaign.id.toHexString()
+    ]);
+
+    ArweaveContentCampaign.createWithContext(event.params.contractDetailsId, campaignContext);
+
+    log.info('Arweave data source created for campaign', [
+        'Campaign ID: ' + newCampaign.id.toHexString()
+    ]);
 
     if (!stats) {
         stats = new Statistic(STATS_ID);
@@ -195,8 +210,8 @@ export function handleVotedOnMilestone(event: VotedOnMilestoneEvent): void {
 
     let vote = new Vote(Bytes.fromUTF8(event.params.project.toHexString() + event.params.voter.toHexString() + event.params.timestamp.toString()))
 
-    // Convert milestoneCID to hex for lookup
-    let milestoneId = Bytes.fromUTF8(event.params.milestoneCID).toHexString()
+    // milestoneCID is now the actual CID string, use it directly as milestone ID
+    let milestoneId = event.params.milestoneCID;
     let milestone = Milestone.load(milestoneId)
     let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()))
     if (!milestone) {
@@ -273,24 +288,31 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
         'Transaction Hash: ' + event.transaction.hash.toHexString(),
         'From: ' + event.transaction.from.toHexString(),
         'To: ' + event.transaction.to!.toHexString(),
-        'Milestone CID: ' + event.params.milestoneCID.toHexString(),
+        'Milestone CID: ' + event.params.milestoneCID.toString(),
         'Period to Vote: ' + event.params.period.toString(),
         'Date Created: ' + event.params.dateCreated.toString()
     ]);
 
-    const newMilestone = new Milestone(event.params.milestoneCID.toHexString())
+    // Convert milestoneCID to string
+    let milestoneCID = event.params.milestoneCID.toString();
+
+    // Use the milestoneCID as the milestone ID
+    const newMilestone = new Milestone(milestoneCID)
     const campaign = Campaign.load(Bytes.fromUTF8(event.transaction.to!.toHexString()));
+
     if (campaign) {
         newMilestone.campaign = campaign.id;
         newMilestone.status = MilestoneStatus.Pending;
-        newMilestone.milestoneCID = event.params.milestoneCID.toHexString();
+        newMilestone.milestoneCID = milestoneCID;
         newMilestone.periodToVote = event.params.period;
         newMilestone.dateCreated = event.params.dateCreated;
         newMilestone.save();
+
         log.info('Milestone Recorded: {}', [
             'Milestone ID: ' + newMilestone.id,
             'Status: Pending',
-            'Campaign ID: ' + campaign.id.toHexString()
+            'Campaign ID: ' + campaign.id.toHexString(),
+            'Milestone CID: ' + newMilestone.milestoneCID
         ]);
 
         //update the campaign with the current milestone
@@ -300,6 +322,21 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
         log.info('Campaign Updated with Current Milestone: {}', [
             'Campaign ID: ' + campaign.id.toHexString(),
             'Current Milestone ID: ' + newMilestone.id
+        ]);
+
+        // Create Arweave data source to fetch milestone content immediately
+        let context = new DataSourceContext();
+        context.setBytes(MILESTONE_ID_KEY, Bytes.fromUTF8(newMilestone.id));
+
+        log.info('Creating Arweave data source for milestone content: {}', [
+            'Milestone CID: ' + milestoneCID,
+            'Milestone ID: ' + newMilestone.id
+        ]);
+
+        ArweaveContentMilestone.createWithContext(milestoneCID, context);
+
+        log.info('Arweave data source created for milestone', [
+            'Milestone ID: ' + newMilestone.id
         ]);
     } else {
         log.warning('Milestone Creation for Non-Existent Campaign: {}', [
@@ -311,7 +348,9 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
 
 export function handleMilestoneStatusUpdated(event: MilestoneStatusUpdatedEvent): void {
     log.info('Milestone Status Changed Event: {}', [
-        'Project: ' + event.params.project.toHexString()
+        'Project: ' + event.params.project.toHexString(),
+        'Status: ' + event.params.status.toString(),
+        'Milestone CID: ' + event.params.milestoneCID
     ]);
 
     let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()))
@@ -319,9 +358,11 @@ export function handleMilestoneStatusUpdated(event: MilestoneStatusUpdatedEvent)
         const currentMilestoneId = campaign.currentMilestone;
         const milestone = Milestone.load(currentMilestoneId!);
         if (milestone) {
+            // Update milestone status and date
             milestone.dateCreated = event.params.date;
             milestone.status = event.params.status;
             milestone.save();
+
             log.info('Milestone Status Updated: {}', [
                 'Milestone ID: ' + milestone.id,
                 'New Status: ' + milestone.status.toString(),
@@ -480,6 +521,7 @@ export function handleMilestoneContent(content: Bytes): void {
     let value = json.fromBytes(content).toObject();
     let title = value.get("title");
     let media = value.get("media");
+    let proofUrls = value.get("proofUrls"); // Check for proofUrls too
     let details = value.get("description");
 
     if (title) {
@@ -490,9 +532,13 @@ export function handleMilestoneContent(content: Bytes): void {
         milestoneContent.details = details.toString();
     }
     let mediaArray: string[] = [];
-    if (media && media.toArray().length > 0) {
-        for (let i = 0; i < media.toArray().length; i++) {
-            const url = media.toArray()[i].toString();
+
+    // Try to get media from either 'media' or 'proofUrls' field
+    let mediaSource = media ? media : proofUrls;
+
+    if (mediaSource && mediaSource.toArray().length > 0) {
+        for (let i = 0; i < mediaSource.toArray().length; i++) {
+            const url = mediaSource.toArray()[i].toString();
             mediaArray.push(url)
         }
         milestoneContent.media = mediaArray;

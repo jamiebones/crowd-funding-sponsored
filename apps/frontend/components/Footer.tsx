@@ -5,6 +5,7 @@ import { Rocket, Github, Twitter, MessageCircle } from 'lucide-react';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const factoryAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;
 
   const footerLinks = {
     platform: [
@@ -157,7 +158,7 @@ export function Footer() {
                 Privacy
               </Link>
               <a
-                href="https://testnet.bscscan.com/address/0x9C413E92bf610Ccd0Cd044c3ba25876764AB8FDD"
+                href={`https://testnet.bscscan.com/address/${factoryAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

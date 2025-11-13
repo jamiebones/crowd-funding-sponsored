@@ -50,7 +50,7 @@ contract CrowdFunding is Initializable, ReentrancyGuard {
         address indexed owner,
         uint256 indexed dateCreated,
         uint256 period,
-        string indexed milestoneCID
+        string milestoneCID
     );
 
     event DonationReceived(

@@ -35,6 +35,11 @@ interface MilestoneContent {
   createdAt: string;
 }
 
+interface CampaignContent {
+  title?: string;
+  details?: string;
+}
+
 export default function MilestoneDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -43,7 +48,8 @@ export default function MilestoneDetailPage() {
   const { address: walletAddress, isConnected } = useAccount();
 
   const [milestoneContent, setMilestoneContent] = useState<MilestoneContent | null>(null);
-  const [loadingContent, setLoadingContent] = useState(true);
+  const [campaignContent, setCampaignContent] = useState<CampaignContent | null>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
   const [voteType, setVoteType] = useState<boolean | null>(null);
 
   // Fetch milestone data
@@ -53,6 +59,20 @@ export default function MilestoneDetailPage() {
   });
 
   const milestone = (milestoneData as any)?.milestone;
+
+  // Debug logging
+  useEffect(() => {
+    if (milestone) {
+      console.log('Milestone data:', milestone);
+      console.log('Milestone CID:', milestone.milestoneCID);
+    }
+  }, [milestone]);
+
+  useEffect(() => {
+    if (milestoneContent) {
+      console.log('Milestone content from Arweave:', milestoneContent);
+    }
+  }, [milestoneContent]);
 
   // Check if user has donated to this campaign
   const { data: donationData } = useQuery(GET_USER_DONATION, {
@@ -75,11 +95,28 @@ export default function MilestoneDetailPage() {
     hash,
   });
 
-  // Fetch milestone content from Arweave
+  // Fetch milestone content from Arweave (fallback if content not in subgraph)
   useEffect(() => {
+    // If content exists in subgraph, use it
+    if (milestone?.content) {
+      setMilestoneContent({
+        title: milestone.content.title || '',
+        description: milestone.content.details || '',
+        proofUrls: milestone.content.media || [],
+        createdAt: milestone.dateCreated,
+      });
+      return;
+    }
+
+    // Fallback: fetch from Arweave if milestoneCID is a valid Arweave ID
     if (!milestone?.milestoneCID) return;
+    
+    // Check if milestoneCID looks like an Arweave transaction ID (not a hex hash)
+    const isArweaveId = !milestone.milestoneCID.startsWith('0x');
+    if (!isArweaveId) return;
 
     const abortController = new AbortController();
+    setLoadingContent(true);
     
     fetch(`https://arweave.net/${milestone.milestoneCID}`, {
       signal: abortController.signal,
@@ -99,7 +136,40 @@ export default function MilestoneDetailPage() {
     return () => {
       abortController.abort();
     };
-  }, [milestone?.milestoneCID]);
+  }, [milestone]);
+
+  // Fetch campaign title from Arweave if not available in subgraph
+  useEffect(() => {
+    if (!milestone?.campaign) return;
+    
+    // If title already exists in subgraph, no need to fetch
+    if (milestone.campaign.content?.title) {
+      setCampaignContent({ title: milestone.campaign.content.title });
+      return;
+    }
+
+    // Otherwise, fetch from Arweave
+    if (milestone.campaign.campaignCID) {
+      const abortController = new AbortController();
+      
+      fetch(`https://arweave.net/${milestone.campaign.campaignCID}`, {
+        signal: abortController.signal,
+      })
+        .then((res) => res.json())
+        .then((content) => {
+          setCampaignContent(content);
+        })
+        .catch((error) => {
+          if (error.name !== 'AbortError') {
+            console.error('Error fetching campaign content:', error);
+          }
+        });
+
+      return () => {
+        abortController.abort();
+      };
+    }
+  }, [milestone?.campaign]);
 
   // Refetch after successful vote
   useEffect(() => {
@@ -157,10 +227,23 @@ export default function MilestoneDetailPage() {
   const campaign = milestone.campaign;
   const categoryInfo = CATEGORIES.find((cat) => cat.id === campaign.category);
   
+  // Calculate vote tallies from votes array
+  const votesForTotal = milestone.votes
+    .filter((v: any) => v.support)
+    .reduce((sum: bigint, v: any) => sum + BigInt(v.weight), BigInt(0));
+    
+  const votesAgainstTotal = milestone.votes
+    .filter((v: any) => !v.support)
+    .reduce((sum: bigint, v: any) => sum + BigInt(v.weight), BigInt(0));
+  
   // Calculate vote percentages
-  const totalVotes = parseFloat(milestone.votesFor) + parseFloat(milestone.votesAgainst);
-  const forPercentage = totalVotes > 0 ? (parseFloat(milestone.votesFor) / totalVotes) * 100 : 0;
-  const againstPercentage = totalVotes > 0 ? (parseFloat(milestone.votesAgainst) / totalVotes) * 100 : 0;
+  const totalVotes = votesForTotal + votesAgainstTotal;
+  const forPercentage = totalVotes > BigInt(0) 
+    ? (Number(votesForTotal) / Number(totalVotes)) * 100 
+    : 0;
+  const againstPercentage = totalVotes > BigInt(0) 
+    ? (Number(votesAgainstTotal) / Number(totalVotes)) * 100 
+    : 0;
   const approvalThreshold = 66.67; // 2/3 majority
 
   // Check if voting period is active
@@ -221,7 +304,7 @@ export default function MilestoneDetailPage() {
             href={`/projects/${campaignAddress}`}
             className="hover:text-gray-900 dark:hover:text-white"
           >
-            {campaign.content?.title || campaign.title || 'Campaign'}
+            {campaign.content?.title || campaignContent?.title || 'Campaign'}
           </Link>
           <span>/</span>
           <span className="text-gray-900 dark:text-white">Milestone</span>
@@ -245,7 +328,7 @@ export default function MilestoneDetailPage() {
                 {getStatusBadge()}
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {milestoneContent?.title || 'Loading...'}
+                {milestoneContent?.title || milestone?.content?.title || 'Milestone Details'}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
                 Created {formatDistanceToNow(new Date(parseInt(milestone.dateCreated) * 1000))} ago
@@ -283,19 +366,44 @@ export default function MilestoneDetailPage() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                 Description
               </h2>
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                {milestoneContent?.description}
-              </p>
+              {loadingContent ? (
+                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading description...</span>
+                </div>
+              ) : milestoneContent?.description ? (
+                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {milestoneContent.description}
+                </p>
+              ) : milestone?.content?.details ? (
+                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {milestone.content.details}
+                </p>
+              ) : (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      <p className="font-semibold mb-1">Milestone content not available</p>
+                      <p>The milestone description is being indexed or was not stored properly.</p>
+                      <p className="mt-2 font-mono text-xs text-gray-600 dark:text-gray-400">
+                        Milestone CID: {milestone?.milestoneCID}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Proof of Completion */}
-            {milestoneContent?.proofUrls && milestoneContent.proofUrls.length > 0 && (
+            {((milestoneContent?.proofUrls && milestoneContent.proofUrls.length > 0) || 
+              (milestone?.content?.media && milestone.content.media.length > 0)) && (
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                   Proof of Completion
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {milestoneContent.proofUrls.map((url, index) => (
+                  {(milestoneContent?.proofUrls || milestone?.content?.media || []).map((url: string, index: number) => (
                     <a
                       key={index}
                       href={url}
@@ -419,7 +527,7 @@ export default function MilestoneDetailPage() {
                   />
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {parseFloat(formatEther(milestone.votesFor)).toFixed(4)} BNB
+                  {parseFloat(formatEther(votesForTotal)).toFixed(4)} BNB
                 </p>
               </div>
 
@@ -441,7 +549,7 @@ export default function MilestoneDetailPage() {
                   />
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {parseFloat(formatEther(milestone.votesAgainst)).toFixed(4)} BNB
+                  {parseFloat(formatEther(votesAgainstTotal)).toFixed(4)} BNB
                 </p>
               </div>
 
@@ -450,7 +558,7 @@ export default function MilestoneDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Total Voting Power</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {parseFloat(formatEther(BigInt(totalVotes.toString()))).toFixed(4)} BNB
+                    {parseFloat(formatEther(totalVotes)).toFixed(4)} BNB
                   </span>
                 </div>
               </div>
@@ -548,7 +656,7 @@ export default function MilestoneDetailPage() {
                 className="block hover:bg-gray-50 dark:hover:bg-gray-900 p-3 rounded-lg transition-colors"
               >
                 <p className="font-semibold text-gray-900 dark:text-white mb-1">
-                  {campaign.content?.title || campaign.title || 'Untitled Campaign'}
+                  {campaign.content?.title || campaignContent?.title || 'Untitled Campaign'}
                 </p>
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <TrendingUp className="w-4 h-4" />
