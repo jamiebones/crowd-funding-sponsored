@@ -7,6 +7,7 @@ import { GET_CAMPAIGN_MANAGE_DATA } from '@/lib/queries/campaign-manage';
 import { Campaign } from '@/types/campaign';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { addressToSubgraphId } from '@/lib/utils';
 import {
   ArrowLeft,
   Loader2,
@@ -30,6 +31,11 @@ export default function CreateMilestonePage() {
   const address = params.address as string;
   const { address: walletAddress, isConnected } = useAccount();
 
+  // Convert address to subgraph ID format
+  const campaignId = address.startsWith('0x') && address.length === 42
+    ? addressToSubgraphId(address.toLowerCase())
+    : address.toLowerCase();
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -40,7 +46,7 @@ export default function CreateMilestonePage() {
 
   // Fetch campaign data
   const { data, loading: campaignLoading } = useQuery(GET_CAMPAIGN_MANAGE_DATA, {
-    variables: { id: address.toLowerCase() },
+    variables: { id: campaignId },
     skip: !address,
   });
 
@@ -75,12 +81,12 @@ export default function CreateMilestonePage() {
 
   const sendEmailNotifications = async () => {
     try {
-      await fetch('/api/send-campaign-update', {
+      const response = await fetch('/api/send-campaign-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaignId: address.toLowerCase(),
-          campaignTitle: campaign?.title || 'Campaign',
+          campaignId: campaign?.contractAddress || address,
+          campaignTitle: campaign?.content?.title || campaign?.title || 'Campaign',
           updateType: 'milestone_created',
           milestoneTitle: title,
           milestoneDescription: description,
@@ -155,7 +161,7 @@ export default function CreateMilestonePage() {
 
       // Create milestone on blockchain
       writeContract({
-        address: address as `0x${string}`,
+        address: (campaign?.contractAddress || address) as `0x${string}`,
         abi: CROWD_FUNDING_ABI,
         functionName: 'createNewMilestone',
         args: [result.milestoneCID],

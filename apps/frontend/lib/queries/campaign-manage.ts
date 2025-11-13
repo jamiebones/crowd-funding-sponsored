@@ -41,6 +41,14 @@ export const GET_CAMPAIGN_MANAGE_DATA = gql`
         amount
         timestamp
       }
+      donorsRecall {
+        id
+        donor {
+          id
+        }
+        amount
+        timestamp
+      }
     }
   }
 `;

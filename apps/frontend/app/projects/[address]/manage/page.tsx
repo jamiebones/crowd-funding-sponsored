@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { CATEGORIES, MILESTONE_STATUS } from '@/lib/constants';
 import { addressToSubgraphId, subgraphIdToAddress } from '@/lib/utils';
+import { filterActiveDonations } from '@/lib/filterActiveDonations';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
 
 const CROWD_FUNDING_ABI = CROWD_FUNDING_CONTRACT.abi;
@@ -440,38 +441,46 @@ export default function CampaignManagePage() {
                 Recent Donors
               </h2>
 
-              {campaign.donations && campaign.donations.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {campaign.donations.slice(0, 10).map((donation: any) => (
-                    <div
-                      key={donation.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <Link
-                          href={`/user/${donation.donor.id}`}
-                          className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block"
-                        >
-                          {donation.donor.id.slice(0, 6)}...{donation.donor.id.slice(-4)}
-                        </Link>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(parseInt(donation.timestamp) * 1000).toLocaleDateString()}
+              {(() => {
+                const allDonations = campaign.donations || [];
+                const withdrawals = campaign.donorsRecall || [];
+                
+                // Filter out donations from users who have withdrawn
+                const activeDonations = filterActiveDonations(allDonations, withdrawals);
+
+                return activeDonations.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {activeDonations.slice(0, 10).map((donation: any) => (
+                      <div
+                        key={donation.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/user/${donation.donor.id}`}
+                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block"
+                          >
+                            {donation.donor.id.slice(0, 6)}...{donation.donor.id.slice(-4)}
+                          </Link>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(parseInt(donation.timestamp) * 1000).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">
+                          {(parseFloat(formatEther(BigInt(donation.amount)))).toFixed(4)} BNB
                         </div>
                       </div>
-                      <div className="text-sm font-bold text-gray-900 dark:text-white">
-                        {(parseFloat(formatEther(BigInt(donation.amount)))).toFixed(4)} BNB
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    No donations yet
-                  </p>
-                </div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                      No active donors
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

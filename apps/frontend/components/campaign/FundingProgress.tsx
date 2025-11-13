@@ -1,13 +1,21 @@
 import { Campaign } from '@/types/campaign';
 import { formatEther } from 'viem';
-import { Target, Users, Clock, TrendingUp } from 'lucide-react';
+import { Target, Users, Clock, TrendingUp, ArrowDownLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useAccount, useReadContract } from 'wagmi';
+import { useState } from 'react';
+import { WithdrawDonationModal } from './WithdrawDonationModal';
+import CROWDFUNDING_ABI from '@/abis/CrowdFunding.json';
 
 interface FundingProgressProps {
   campaign: Campaign;
+  onRefetch?: () => void;
 }
 
-export function FundingProgress({ campaign }: FundingProgressProps) {
+export function FundingProgress({ campaign, onRefetch }: FundingProgressProps) {
+  const { address, isConnected } = useAccount();
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
   const raised = parseFloat(formatEther(BigInt(campaign.amountRaised)));
   const goal = parseFloat(formatEther(BigInt(campaign.amountSought)));
   const progress = (raised / goal) * 100;
@@ -18,6 +26,29 @@ export function FundingProgress({ campaign }: FundingProgressProps) {
   const timeRemaining = endTime - now;
   const daysRemaining = Math.max(0, Math.floor(timeRemaining / 86400));
   const hoursRemaining = Math.max(0, Math.floor((timeRemaining % 86400) / 3600));
+
+  // Check if user has donated to this campaign
+  const { data: userDonation } = useReadContract({
+    address: (campaign.contractAddress || campaign.id) as `0x${string}`,
+    abi: CROWDFUNDING_ABI.abi,
+    functionName: 'donors',
+    args: [address],
+    query: {
+      enabled: !!address && isConnected,
+    },
+  });
+
+  // Check campaign stats for approved milestones
+  const { data: campaignStats } = useReadContract({
+    address: (campaign.contractAddress || campaign.id) as `0x${string}`,
+    abi: CROWDFUNDING_ABI.abi,
+    functionName: 'getCampaignStats',
+  });
+
+  const approvedMilestones = campaignStats ? (campaignStats as any)[3] : 0;
+
+  const hasDonated = userDonation ? BigInt(userDonation.toString()) > BigInt(0) : false;
+  const canWithdraw = hasDonated && Number(approvedMilestones) < 3;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 sticky top-6">
@@ -89,20 +120,33 @@ export function FundingProgress({ campaign }: FundingProgressProps) {
         )}
       </div>
 
-      {/* Donate Button */}
-      {campaign.campaignRunning ? (
-        <Link
-          href={`/projects/${campaign.id}/donate`}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-4 rounded-lg transition-colors shadow-lg shadow-blue-600/30 mb-4"
-        >
-          <TrendingUp className="w-5 h-5" />
-          Back This Campaign
-        </Link>
-      ) : (
-        <div className="w-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold px-6 py-4 rounded-lg text-center mb-4">
-          Campaign Ended
-        </div>
-      )}
+      {/* Action Buttons */}
+      <div className="space-y-3 mb-4">
+        {campaign.campaignRunning ? (
+          <Link
+            href={`/projects/${campaign.contractAddress || campaign.id}/donate`}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-4 rounded-lg transition-colors shadow-lg shadow-blue-600/30"
+          >
+            <TrendingUp className="w-5 h-5" />
+            Back This Campaign
+          </Link>
+        ) : (
+          <div className="w-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold px-6 py-4 rounded-lg text-center">
+            Campaign Ended
+          </div>
+        )}
+
+        {/* Withdraw Button for Donors */}
+        {isConnected && canWithdraw && (
+          <button
+            onClick={() => setShowWithdrawModal(true)}
+            className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+          >
+            <ArrowDownLeft className="w-5 h-5" />
+            Withdraw My Donation
+          </button>
+        )}
+      </div>
 
       {/* Share Buttons */}
       <div className="space-y-2">
@@ -151,6 +195,26 @@ export function FundingProgress({ campaign }: FundingProgressProps) {
           </button>
         </div>
       </div>
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <WithdrawDonationModal
+          campaignAddress={(campaign.contractAddress || campaign.id) as string}
+          onClose={() => setShowWithdrawModal(false)}
+          onSuccess={() => {
+            // Refetch campaign data from subgraph
+            if (onRefetch) {
+              // Wait for subgraph to index the transaction
+              setTimeout(() => {
+                onRefetch();
+              }, 5000); // Increased to 5 seconds for subgraph indexing
+            } else {
+              // Fallback to page reload if no refetch function
+              window.location.reload();
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

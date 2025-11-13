@@ -1,13 +1,17 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { GET_FEATURED_CAMPAIGNS } from '@/lib/queries/landing';
 import { Campaign } from '@/types/campaign';
 import { CampaignCard } from '@/components/shared/CampaignCard';
+import { fetchArweaveTitles } from '@/lib/fetchArweaveTitles';
 
 export function FeaturedCampaigns() {
+  const [campaignsWithTitles, setCampaignsWithTitles] = useState<Campaign[]>([]);
+
   const { data, loading, error } = useQuery<{ campaigns: Campaign[] }>(
     GET_FEATURED_CAMPAIGNS,
     {
@@ -18,6 +22,24 @@ export function FeaturedCampaigns() {
   );
 
   const campaigns = data?.campaigns || [];
+
+  // Fetch titles from Arweave for campaigns without titles
+  useEffect(() => {
+    if (campaigns.length === 0) return;
+
+    const fetchTitles = async () => {
+      const updatedCampaigns = await fetchArweaveTitles(
+        campaigns,
+        (campaign) => campaign.campaignCID,
+        (campaign) => !!campaign.content?.title
+      );
+      setCampaignsWithTitles(updatedCampaigns);
+    };
+
+    fetchTitles();
+  }, [campaigns]);
+
+  const displayCampaigns = campaignsWithTitles.length > 0 ? campaignsWithTitles : campaigns;
 
   return (
     <section className="py-16 md:py-20 bg-gray-50 dark:bg-gray-900">
@@ -72,9 +94,9 @@ export function FeaturedCampaigns() {
           </div>
         )}
 
-        {!loading && !error && campaigns.length > 0 && (
+        {!loading && !error && displayCampaigns.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {campaigns.map((campaign) => (
+            {displayCampaigns.map((campaign) => (
               <CampaignCard key={campaign.id} campaign={campaign} />
             ))}
           </div>

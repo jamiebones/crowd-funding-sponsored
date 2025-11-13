@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { GET_ALL_CAMPAIGNS } from '@/lib/queries/campaigns';
 import { Campaign } from '@/types/campaign';
@@ -13,6 +13,7 @@ import { formatEther } from 'viem';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { CampaignCardSkeleton } from '@/components/LoadingSkeletons';
+import { fetchArweaveTitles } from '@/lib/fetchArweaveTitles';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -24,6 +25,7 @@ export default function ProjectsPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [campaignsWithTitles, setCampaignsWithTitles] = useState<Campaign[]>([]);
 
   // Build GraphQL where filter
   const whereFilter = useMemo(() => {
@@ -56,7 +58,7 @@ export default function ProjectsPage() {
       case 'most-backers':
         return { orderBy: 'backers', orderDirection: 'desc' };
       case 'ending-soon':
-        return { orderBy: 'dateEnded', orderDirection: 'asc' };
+        return { orderBy: 'endDate', orderDirection: 'asc' };
       default:
         return { orderBy: 'dateCreated', orderDirection: 'desc' };
     }
@@ -71,15 +73,50 @@ export default function ProjectsPage() {
       orderDirection,
       where: whereFilter,
     },
+    errorPolicy: 'all', // Show partial data even if there are errors
   });
+
+  // Log errors for debugging
+  useEffect(() => {
+    if (error) {
+      console.error('GraphQL Error:', error);
+      console.error('Error message:', error.message);
+      if ('graphQLErrors' in error) {
+        console.error('GraphQL errors:', error.graphQLErrors);
+      }
+      if ('networkError' in error) {
+        console.error('Network error:', error.networkError);
+      }
+    }
+  }, [error]);
+
+  // Fetch titles from Arweave for campaigns without titles
+  useEffect(() => {
+    const campaigns = data?.campaigns || [];
+    if (campaigns.length === 0) return;
+
+    const fetchTitles = async () => {
+      const updatedCampaigns = await fetchArweaveTitles(
+        campaigns,
+        (campaign) => campaign.campaignCID,
+        (campaign) => !!campaign.content?.title
+      );
+      setCampaignsWithTitles(updatedCampaigns);
+    };
+
+    fetchTitles();
+  }, [data?.campaigns]);
 
   // Filter by progress and search locally (since subgraph doesn't support these easily)
   const filteredCampaigns = useMemo(() => {
-    let campaigns = data?.campaigns || [];
+    // Use campaigns with fetched titles if available, otherwise use raw data
+    let campaigns = campaignsWithTitles.length > 0 ? campaignsWithTitles : (data?.campaigns || []);
 
     // Apply progress filter
     if (selectedProgress !== 'all') {
       campaigns = campaigns.filter((campaign) => {
+        if (!campaign?.amountRaised || !campaign?.amountSought) return false;
+        
         const progress =
           (parseFloat(formatEther(BigInt(campaign.amountRaised))) /
             parseFloat(formatEther(BigInt(campaign.amountSought)))) *
@@ -106,13 +143,14 @@ export default function ProjectsPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       campaigns = campaigns.filter((campaign) => {
-        const title = campaign.content?.title || campaign.title || '';
+        if (!campaign) return false;
+        const title = campaign.content?.title || (campaign as any).fetchedTitle || campaign.title || '';
         return title.toLowerCase().includes(query);
       });
     }
 
     return campaigns;
-  }, [data?.campaigns, selectedProgress, searchQuery]);
+  }, [campaignsWithTitles, data?.campaigns, selectedProgress, searchQuery]);
 
   const totalPages = Math.ceil((filteredCampaigns.length || 0) / ITEMS_PER_PAGE);
 
@@ -189,10 +227,13 @@ export default function ProjectsPage() {
         )}
 
         {/* Error State */}
-        {error && (
+        {error && !data && (
           <div className="text-center py-12">
             <p className="text-red-600 dark:text-red-400 mb-4">
               Failed to load campaigns. Please try again later.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {error.message}
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -204,18 +245,18 @@ export default function ProjectsPage() {
         )}
 
         {/* Campaign Grid/List */}
-        {!loading && !error && filteredCampaigns.length > 0 && (
+        {!loading && filteredCampaigns.length > 0 && (
           <>
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {filteredCampaigns.map((campaign) => (
-                  <CampaignCard key={campaign.id} campaign={campaign} />
+                {filteredCampaigns.filter(campaign => campaign).map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign as Campaign} />
                 ))}
               </div>
             ) : (
               <div className="space-y-4 mb-8">
-                {filteredCampaigns.map((campaign) => (
-                  <CampaignCardList key={campaign.id} campaign={campaign} />
+                {filteredCampaigns.filter(campaign => campaign).map((campaign) => (
+                  <CampaignCardList key={campaign.id} campaign={campaign as Campaign} />
                 ))}
               </div>
             )}

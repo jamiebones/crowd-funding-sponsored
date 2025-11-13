@@ -39,13 +39,23 @@ export default function UserProfilePage() {
     skip: !address,
   });
 
+  // Debug logging
+  useEffect(() => {
+    if (data) {
+      console.log('User profile data:', data);
+    }
+    if (error) {
+      console.error('User profile error:', error);
+    }
+  }, [data, error]);
+
   const campaignCreator = (data as any)?.campaignCreator;
   const donor = (data as any)?.donor;
   const votes = (data as any)?.votes || [];
 
   // Calculate statistics
-  const totalCampaignsCreated = campaignCreator?.totalCampaigns || 0;
   const campaigns = campaignCreator?.createdCampaigns || [];
+  const totalCampaignsCreated = campaignCreator?.totalCampaigns || campaigns.length || 0;
   const activeCampaigns = campaigns.filter((c: any) => c.campaignRunning).length;
   const endedCampaigns = campaigns.filter((c: any) => !c.campaignRunning).length;
   

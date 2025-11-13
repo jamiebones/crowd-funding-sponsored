@@ -158,7 +158,7 @@ export default function DashboardPage() {
                     Total Donated
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {dashboardData.donor?.totalDonated / 1e18}  BNB
+                    {(parseFloat(totalDonated) / 1e18).toFixed(2)} BNB
                   </p>
                 </div>
                 <Heart className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-50" />

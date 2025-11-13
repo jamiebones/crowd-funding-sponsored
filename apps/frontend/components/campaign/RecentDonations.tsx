@@ -2,20 +2,26 @@ import { Campaign } from '@/types/campaign';
 import { formatEther } from 'viem';
 import { Users, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { filterActiveDonations } from '@/lib/filterActiveDonations';
 
 interface RecentDonationsProps {
   campaign: Campaign;
 }
 
 export function RecentDonations({ campaign }: RecentDonationsProps) {
-  const donations = campaign.donations || [];
-  const recentDonations = donations.slice(0, 10); // Show 10 most recent
+  const allDonations = campaign.donations || [];
+  const withdrawals = campaign.donorsRecall || [];
+  
+  // Filter out donations from users who have withdrawn
+  const activeDonations = filterActiveDonations(allDonations, withdrawals);
+  
+  const recentDonations = activeDonations.slice(0, 10); // Show 10 most recent
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  if (donations.length === 0) {
+  if (activeDonations.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -24,7 +30,7 @@ export function RecentDonations({ campaign }: RecentDonationsProps) {
         <div className="text-center py-8">
           <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
-            No donations yet. Be the first to support this campaign!
+            No active donations. Be the first to support this campaign!
           </p>
         </div>
       </div>
@@ -35,9 +41,9 @@ export function RecentDonations({ campaign }: RecentDonationsProps) {
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Recent Donations ({donations.length})
+          Recent Donations ({activeDonations.length})
         </h2>
-        {donations.length > 10 && (
+        {activeDonations.length > 10 && (
           <Link
             href={`/projects/${campaign.id}/donations`}
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -67,7 +73,7 @@ export function RecentDonations({ campaign }: RecentDonationsProps) {
                 {/* Donor Avatar/Number */}
                 <div className="flex-shrink-0">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                    #{donations.length - index}
+                    #{activeDonations.length - index}
                   </div>
                 </div>
 
@@ -112,7 +118,7 @@ export function RecentDonations({ campaign }: RecentDonationsProps) {
       </div>
 
       {/* Summary Stats */}
-      {donations.length > 0 && (
+      {activeDonations.length > 0 && (
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>

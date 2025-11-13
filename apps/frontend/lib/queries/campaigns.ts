@@ -26,7 +26,7 @@ export const GET_ALL_CAMPAIGNS = gql`
       backers
       campaignRunning
       dateCreated
-      dateEnded
+      endDate
       owner {
         id
       }

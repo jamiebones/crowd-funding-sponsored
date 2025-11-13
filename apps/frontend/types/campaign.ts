@@ -43,6 +43,14 @@ export interface Campaign {
     amount: string;
     timestamp: string;
   }>;
+  donorsRecall?: Array<{
+    id: string;
+    donor: {
+      id: string;
+    } | string;
+    amount: string;
+    timestamp: string;
+  }>;
 }
 
 export interface Statistics {

@@ -24,9 +24,11 @@ export default function CampaignDetailPage() {
     ? addressToSubgraphId(address.toLowerCase())
     : address.toLowerCase();
 
-  const { data, loading, error } = useQuery(GET_CAMPAIGN_DETAIL, {
+  const { data, loading, error, refetch } = useQuery(GET_CAMPAIGN_DETAIL, {
     variables: { id: campaignId },
     skip: !address,
+    fetchPolicy: 'network-only', // Always fetch fresh data
+    notifyOnNetworkStatusChange: true, // Notify component of network status changes
   });
 
   const [campaignContent, setCampaignContent] = useState<CampaignContent | null>(
@@ -177,7 +179,7 @@ export default function CampaignDetailPage() {
 
           {/* Right Column - Sidebar (1/3 width) */}
           <div className="lg:col-span-1">
-            <FundingProgress campaign={campaign} />
+            <FundingProgress campaign={campaign} onRefetch={refetch} />
           </div>
         </div>
       </div>

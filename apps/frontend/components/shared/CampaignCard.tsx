@@ -16,8 +16,8 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
     100
   ).toFixed(1);
 
-  // Support both old and new schema structures
-  const title = campaign.content?.title || campaign.title || 'Untitled Campaign';
+  // Support both old and new schema structures, and fetched titles from Arweave
+  const title = campaign.content?.title || (campaign as any).fetchedTitle || campaign.title || 'Untitled Campaign';
 
   return (
     <Link
