@@ -18,6 +18,11 @@ export function CampaignCardList({ campaign }: CampaignCardListProps) {
 
   const createdDate = new Date(parseInt(campaign.dateCreated) * 1000);
 
+  // Determine if campaign is actually running based on endDate
+  const now = Math.floor(Date.now() / 1000);
+  const endTime = campaign.endDate ? parseInt(campaign.endDate) : 0;
+  const isActuallyRunning = campaign.campaignRunning && (endTime === 0 || now < endTime);
+
   return (
     <Link
       href={`/projects/${campaign.id}`}
@@ -27,12 +32,12 @@ export function CampaignCardList({ campaign }: CampaignCardListProps) {
         {/* Image */}
         <div className="relative w-full md:w-64 h-48 md:h-auto bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
           <div className="text-5xl">{category?.icon || '📦'}</div>
-          {campaign.campaignRunning && (
+          {isActuallyRunning && (
             <div className="absolute top-4 left-4 bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
               Active
             </div>
           )}
-          {!campaign.campaignRunning && (
+          {!isActuallyRunning && (
             <div className="absolute top-4 left-4 bg-gray-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
               Ended
             </div>

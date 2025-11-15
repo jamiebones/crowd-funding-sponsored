@@ -7,7 +7,6 @@ import { GET_CAMPAIGN_MANAGE_DATA } from '@/lib/queries/campaign-manage';
 import { Campaign } from '@/types/campaign';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { addressToSubgraphId } from '@/lib/utils';
 import {
   ArrowLeft,
   Loader2,
@@ -31,10 +30,8 @@ export default function CreateMilestonePage() {
   const address = params.address as string;
   const { address: walletAddress, isConnected } = useAccount();
 
-  // Convert address to subgraph ID format
-  const campaignId = address.startsWith('0x') && address.length === 42
-    ? addressToSubgraphId(address.toLowerCase())
-    : address.toLowerCase();
+  // Use the address directly as campaign ID (lowercased for consistency)
+  const campaignId = address.toLowerCase();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

@@ -53,9 +53,7 @@ export function handleNewCrowdFundingContractCreated(
 
     let campaignCreator = CampaignCreator.load(event.params.owner.toHexString());
     let stats = Statistic.load(STATS_ID);
-    let newCampaign = new Campaign(
-        Bytes.fromUTF8(event.params.contractAddress.toHexString())
-    );
+    let newCampaign = new Campaign(event.params.contractAddress);
     newCampaign.campaignCID = event.params.contractDetailsId;
     newCampaign.owner = event.params.owner.toHexString();
     newCampaign.dateCreated = event.block.timestamp;
@@ -66,6 +64,7 @@ export function handleNewCrowdFundingContractCreated(
     newCampaign.amountRaised = BigInt.fromI32(0);
     newCampaign.contractAddress = event.params.contractAddress.toHexString();
     newCampaign.projectDuration = event.params.duration;
+    newCampaign.endDate = event.block.timestamp.plus(event.params.duration);
     newCampaign.backers = BigInt.fromI32(0);
     newCampaign.save();
 
@@ -132,7 +131,7 @@ export function handleDonationReceived(event: DonationReceivedEvent): void {
     ]);
 
     const stats = Statistic.load(STATS_ID);
-    const campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()));
+    const campaign = Campaign.load(event.params.project);
 
     if (campaign) {
         let donation = new Donation(Bytes.fromUTF8(event.params.donor.toHexString()
@@ -213,7 +212,7 @@ export function handleVotedOnMilestone(event: VotedOnMilestoneEvent): void {
     // milestoneCID is now the actual CID string, use it directly as milestone ID
     let milestoneId = event.params.milestoneCID;
     let milestone = Milestone.load(milestoneId)
-    let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()))
+    let campaign = Campaign.load(event.params.project)
     if (!milestone) {
         log.warning('Vote Event for Non-Existent Milestone: {}', [
             'Milestone CID: ' + event.params.milestoneCID
@@ -249,7 +248,7 @@ export function handleVotedOnMilestone(event: VotedOnMilestoneEvent): void {
 
 export function handleDonationWithdrawn(event: DonationWithdrawnEvent): void {
     log.info("handles donation retrieval", ["donation retrieval started"])
-    let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()));
+    let campaign = Campaign.load(event.params.project);
     let stats = Statistic.load(STATS_ID);
     let donationWithdrawal = new DonorWithdrawal(Bytes.fromUTF8(event.params.project.toHexString()
         + event.params.donor.toHexString() + event.params.date.toString()))
@@ -298,7 +297,7 @@ export function handleMilestoneCreated(event: MilestoneCreatedEvent): void {
 
     // Use the milestoneCID as the milestone ID
     const newMilestone = new Milestone(milestoneCID)
-    const campaign = Campaign.load(Bytes.fromUTF8(event.transaction.to!.toHexString()));
+    const campaign = Campaign.load(event.transaction.to!);
 
     if (campaign) {
         newMilestone.campaign = campaign.id;
@@ -353,7 +352,7 @@ export function handleMilestoneStatusUpdated(event: MilestoneStatusUpdatedEvent)
         'Milestone CID: ' + event.params.milestoneCID
     ]);
 
-    let campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()))
+    let campaign = Campaign.load(event.params.project)
     if (campaign && campaign.currentMilestone) {
         const currentMilestoneId = campaign.currentMilestone;
         const milestone = Milestone.load(currentMilestoneId!);
@@ -424,7 +423,7 @@ export function handleCampaignEnded(event: CampaignEndedEvent): void {
         'Project: ' + event.params.project.toHexString()
     ]);
 
-    const campaign = Campaign.load(Bytes.fromUTF8(event.params.project.toHexString()));
+    const campaign = Campaign.load(event.params.project);
     if (campaign) {
         campaign.active = false;
         campaign.save();

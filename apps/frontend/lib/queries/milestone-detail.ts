@@ -39,9 +39,7 @@ export const GET_MILESTONE_DETAIL = gql`
 
 export const GET_USER_DONATION = gql`
   query GetUserDonation($donor: String!, $campaign: String!) {
-    donations(
-      where: { donor: $donor, campaign: $campaign }
-    ) {
+    donations(where: { donor_: { id: $donor }, donatingTo_: { id: $campaign } }) {
       id
       amount
     }

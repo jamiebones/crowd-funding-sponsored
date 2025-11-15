@@ -19,6 +19,11 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   // Support both old and new schema structures, and fetched titles from Arweave
   const title = campaign.content?.title || (campaign as any).fetchedTitle || campaign.title || 'Untitled Campaign';
 
+  // Determine if campaign is actually running based on endDate
+  const now = Math.floor(Date.now() / 1000);
+  const endTime = campaign.endDate ? parseInt(campaign.endDate) : 0;
+  const isActuallyRunning = campaign.campaignRunning && (endTime === 0 || now < endTime);
+
   return (
     <Link
       href={`/projects/${campaign.id}`}
@@ -27,7 +32,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
       {/* Image placeholder */}
       <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
         <div className="text-6xl">{category?.icon || '📦'}</div>
-        {campaign.campaignRunning && (
+        {isActuallyRunning && (
           <div className="absolute top-4 left-4 bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
             Active
           </div>

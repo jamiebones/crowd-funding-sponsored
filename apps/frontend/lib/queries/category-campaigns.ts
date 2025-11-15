@@ -18,7 +18,7 @@ export const GET_CAMPAIGNS_BY_CATEGORY = gql`
       backers
       campaignRunning
       dateCreated
-      dateEnded
+      endDate
       campaignCID
       owner {
         id

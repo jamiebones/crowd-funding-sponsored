@@ -8,7 +8,6 @@ import { useQuery } from '@apollo/client/react';
 import { GET_CAMPAIGN_DETAIL } from '@/lib/queries/campaign-detail';
 import { Campaign, CampaignContent } from '@/types/campaign';
 import { CATEGORIES } from '@/lib/constants';
-import { addressToSubgraphId, subgraphIdToAddress } from '@/lib/utils';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
 import { Loader2, Heart, Coins, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -21,15 +20,11 @@ export default function DonatePage() {
   const addressParam = params.address as string;
   const { address: walletAddress, isConnected } = useAccount();
 
-  // Convert address to subgraph ID format if it looks like a normal address
-  const campaignId = addressParam.startsWith('0x') && addressParam.length === 42
-    ? addressToSubgraphId(addressParam.toLowerCase())
-    : addressParam.toLowerCase();
+  // Use the address directly as campaign ID (lowercased for consistency)
+  const campaignId = addressParam.toLowerCase();
 
-  // Get the actual contract address for blockchain interactions
-  const contractAddress = addressParam.startsWith('0x') && addressParam.length === 42
-    ? addressParam
-    : subgraphIdToAddress(addressParam);
+  // The contract address is the same as the campaign ID
+  const contractAddress = addressParam;
 
   const [amount, setAmount] = useState('');
   const [email, setEmail] = useState('');

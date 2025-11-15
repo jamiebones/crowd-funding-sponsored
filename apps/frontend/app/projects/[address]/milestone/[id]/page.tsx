@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { CATEGORIES, MILESTONE_STATUS } from '@/lib/constants';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
 
 const CROWD_FUNDING_ABI = CROWD_FUNDING_CONTRACT.abi;
@@ -43,9 +44,12 @@ interface CampaignContent {
 export default function MilestoneDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const campaignAddress = params.address as string;
+  const rawAddress = params.address as string;
   const milestoneId = params.id as string;
   const { address: walletAddress, isConnected } = useAccount();
+
+  console.log('Raw address from URL:', rawAddress);
+  console.log('Raw address length:', rawAddress?.length);
 
   const [milestoneContent, setMilestoneContent] = useState<MilestoneContent | null>(null);
   const [campaignContent, setCampaignContent] = useState<CampaignContent | null>(null);
@@ -59,20 +63,13 @@ export default function MilestoneDetailPage() {
   });
 
   const milestone = (milestoneData as any)?.milestone;
+  
+  // Get campaign address from milestone data
+  const campaignAddress = milestone?.campaign?.id;
 
   // Debug logging
-  useEffect(() => {
-    if (milestone) {
-      console.log('Milestone data:', milestone);
-      console.log('Milestone CID:', milestone.milestoneCID);
-    }
-  }, [milestone]);
+ 
 
-  useEffect(() => {
-    if (milestoneContent) {
-      console.log('Milestone content from Arweave:', milestoneContent);
-    }
-  }, [milestoneContent]);
 
   // Check if user has donated to this campaign
   const { data: donationData } = useQuery(GET_USER_DONATION, {
@@ -90,10 +87,42 @@ export default function MilestoneDetailPage() {
     0
   );
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  // Check if user already voted
+  const userVote = milestone?.votes?.find(
+    (v: any) => v.voter.toLowerCase() === walletAddress?.toLowerCase()
+  );
+
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Log any errors from writeContract
+  useEffect(() => {
+    if (writeError) {
+      console.error('Write contract error:', writeError);
+      toast.error('Transaction failed: ' + (writeError as any)?.shortMessage || writeError.message);
+      setVoteType(null);
+    }
+  }, [writeError]);
+
+  // Log hash when transaction is submitted
+  useEffect(() => {
+    if (hash) {
+      console.log('Transaction hash:', hash);
+      toast.loading('Confirming vote transaction...', { id: hash });
+    }
+  }, [hash]);
+
+  // Handle transaction success
+  useEffect(() => {
+    if (isSuccess && hash) {
+      console.log('Transaction confirmed successfully');
+      toast.success('Vote recorded successfully!', { id: hash });
+      refetch();
+      setVoteType(null);
+    }
+  }, [isSuccess, hash, refetch]);
 
   // Fetch milestone content from Arweave (fallback if content not in subgraph)
   useEffect(() => {
@@ -171,28 +200,41 @@ export default function MilestoneDetailPage() {
     }
   }, [milestone?.campaign]);
 
-  // Refetch after successful vote
-  useEffect(() => {
-    if (isSuccess) {
-      refetch();
-      setVoteType(null);
+  const handleVote = async (support: boolean) => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first');
+      return;
     }
-  }, [isSuccess, refetch]);
 
-  const handleVote = (support: boolean) => {
     if (!hasVotingPower) {
-      alert('You must donate to this campaign to vote');
+      toast.error('You must donate to this campaign to vote');
+      return;
+    }
+
+    if (!campaignAddress) {
+      toast.error('Campaign address not found');
+      return;
+    }
+
+    if (userVote) {
+      toast.error('You have already voted on this milestone');
       return;
     }
 
     setVoteType(support);
 
-    writeContract({
-      address: campaignAddress as `0x${string}`,
-      abi: CROWD_FUNDING_ABI,
-      functionName: 'voteOnMilestone',
-      args: [support],
-    });
+    try {
+      writeContract({
+        address: campaignAddress as `0x${string}`,
+        abi: CROWD_FUNDING_ABI,
+        functionName: 'voteOnMilestone',
+        args: [support],
+      });
+    } catch (error) {
+      console.error('Error calling writeContract:', error);
+      toast.error('Error submitting vote: ' + (error as Error).message);
+      setVoteType(null);
+    }
   };
 
   if (milestoneLoading || loadingContent) {
@@ -251,11 +293,6 @@ export default function MilestoneDetailPage() {
   const now = Date.now();
   const isVotingActive = now < votingDeadline && milestone.status === MILESTONE_STATUS.PENDING;
   const timeRemaining = votingDeadline - now;
-
-  // Check if user already voted
-  const userVote = milestone.votes.find(
-    (v: any) => v.voter.toLowerCase() === walletAddress?.toLowerCase()
-  );
 
   // Status badge
   const getStatusBadge = () => {
@@ -565,86 +602,139 @@ export default function MilestoneDetailPage() {
             </div>
 
             {/* Vote Buttons */}
-            {isConnected && isVotingActive && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                  Cast Your Vote
-                </h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                Cast Your Vote
+              </h3>
 
-                {!hasVotingPower ? (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                      <div className="text-sm text-gray-700 dark:text-gray-300">
-                        <p className="font-semibold mb-1">Not eligible to vote</p>
-                        <p>You must donate to this campaign to vote on milestones.</p>
-                      </div>
+              {!isConnected ? (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      <p className="font-semibold mb-1">Connect wallet to vote</p>
+                      <p>Connect your wallet to participate in milestone voting.</p>
                     </div>
                   </div>
-                ) : userVote ? (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              ) : !isVotingActive ? (
+                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400 mt-0.5" />
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      <p className="font-semibold mb-1">Voting period ended</p>
+                      <p>The voting period for this milestone has concluded.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : !hasVotingPower ? (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      <p className="font-semibold mb-1">Not eligible to vote</p>
+                      <p className="mb-2">You must donate to this campaign to vote on milestones.</p>
+                      <Link
+                        href={`/projects/${campaignAddress}`}
+                        className="inline-flex items-center gap-1 text-yellow-700 dark:text-yellow-300 hover:underline font-semibold"
+                      >
+                        Donate to this campaign
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : userVote ? (
+                <div className="space-y-4">
+                  <div className={`border rounded-lg p-4 ${
+                    userVote.support 
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className={`w-5 h-5 ${
+                        userVote.support 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-red-600 dark:text-red-400'
+                      }`} />
                       <span className="font-semibold text-gray-900 dark:text-white">
-                        You voted: {userVote.support ? 'Support' : 'Against'}
+                        You voted: {userVote.support ? 'Support ✓' : 'Against ✗'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Vote weight: {parseFloat(formatEther(userVote.weight)).toFixed(4)} BNB
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <div className="space-y-1 text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Your voting power</span>
+                        <span className="text-gray-600 dark:text-gray-400">Vote weight:</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          {parseFloat(formatEther(votingPower.toString())).toFixed(4)} BNB
+                          {parseFloat(formatEther(userVote.weight)).toFixed(4)} BNB
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Your choice:</span>
+                        <span className={`font-semibold ${
+                          userVote.support 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {userVote.support ? 'Supporting this milestone' : 'Opposing this milestone'}
                         </span>
                       </div>
                     </div>
-
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => handleVote(true)}
-                        disabled={isPending || isConfirming}
-                        className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-                      >
-                        {isPending || isConfirming ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            {voteType === true ? 'Voting...' : 'Processing...'}
-                          </>
-                        ) : (
-                          <>
-                            <ThumbsUp className="w-5 h-5" />
-                            Vote Support
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleVote(false)}
-                        disabled={isPending || isConfirming}
-                        className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-                      >
-                        {isPending || isConfirming ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            {voteType === false ? 'Voting...' : 'Processing...'}
-                          </>
-                        ) : (
-                          <>
-                            <ThumbsDown className="w-5 h-5" />
-                            Vote Against
-                          </>
-                        )}
-                      </button>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                    You have already cast your vote on this milestone.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Your voting power</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {parseFloat(formatEther(votingPower.toString())).toFixed(4)} BNB
+                      </span>
                     </div>
-                  </>
-                )}
-              </div>
-            )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleVote(true)}
+                      disabled={isPending || isConfirming}
+                      className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                    >
+                      {isPending || isConfirming ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {voteType === true ? 'Voting...' : 'Processing...'}
+                        </>
+                      ) : (
+                        <>
+                          <ThumbsUp className="w-5 h-5" />
+                          Vote Support
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleVote(false)}
+                      disabled={isPending || isConfirming}
+                      className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                    >
+                      {isPending || isConfirming ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {voteType === false ? 'Voting...' : 'Processing...'}
+                        </>
+                      ) : (
+                        <>
+                          <ThumbsDown className="w-5 h-5" />
+                          Vote Against
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Campaign Info */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">

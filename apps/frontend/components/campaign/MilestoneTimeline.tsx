@@ -8,7 +8,12 @@ interface MilestoneTimelineProps {
 }
 
 export function MilestoneTimeline({ campaign }: MilestoneTimelineProps) {
-  const milestones = campaign.milestone || [];
+  // Sort milestones by creation date (oldest first) - create a copy to avoid mutating read-only array
+  const milestones = [...(campaign.milestone || [])].sort((a, b) => {
+    const dateA = a.dateCreated ? parseInt(a.dateCreated) : 0;
+    const dateB = b.dateCreated ? parseInt(b.dateCreated) : 0;
+    return dateA - dateB;
+  });
 
   if (milestones.length === 0) {
     return (

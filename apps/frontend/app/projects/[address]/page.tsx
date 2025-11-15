@@ -11,18 +11,14 @@ import { FundingProgress } from '@/components/campaign/FundingProgress';
 import { MilestoneTimeline } from '@/components/campaign/MilestoneTimeline';
 import { RecentDonations } from '@/components/campaign/RecentDonations';
 import { CATEGORIES } from '@/lib/constants';
-import { addressToSubgraphId } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 export default function CampaignDetailPage() {
   const params = useParams();
   const address = params.address as string;
   
-  // Convert address to subgraph ID format if it looks like a normal address
-  // The subgraph uses Bytes.fromUTF8(address.toHexString()) as ID
-  const campaignId = address.startsWith('0x') && address.length === 42
-    ? addressToSubgraphId(address.toLowerCase())
-    : address.toLowerCase();
+  // Use the address directly as campaign ID (lowercased for consistency)
+  const campaignId = address.toLowerCase();
 
   const { data, loading, error, refetch } = useQuery(GET_CAMPAIGN_DETAIL, {
     variables: { id: campaignId },

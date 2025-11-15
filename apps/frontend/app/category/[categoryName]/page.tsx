@@ -67,11 +67,20 @@ export default function CategoryPage() {
   const filteredAndSortedCampaigns = useMemo(() => {
     let filtered = [...campaigns];
 
-    // Apply status filter
+    // Get current timestamp
+    const now = Math.floor(Date.now() / 1000);
+
+    // Apply status filter with real-time end date check
     if (statusFilter === 'active') {
-      filtered = filtered.filter((c: any) => c.campaignRunning);
+      filtered = filtered.filter((c: any) => {
+        const endTime = c.endDate ? parseInt(c.endDate) : 0;
+        return c.campaignRunning && (endTime === 0 || now < endTime);
+      });
     } else if (statusFilter === 'ended') {
-      filtered = filtered.filter((c: any) => !c.campaignRunning);
+      filtered = filtered.filter((c: any) => {
+        const endTime = c.endDate ? parseInt(c.endDate) : 0;
+        return !c.campaignRunning || (endTime > 0 && now >= endTime);
+      });
     }
 
     // Apply sorting
@@ -98,8 +107,12 @@ export default function CategoryPage() {
 
   // Calculate category statistics
   const stats = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
     const totalCampaigns = campaigns.length;
-    const activeCampaigns = campaigns.filter((c: any) => c.campaignRunning).length;
+    const activeCampaigns = campaigns.filter((c: any) => {
+      const endTime = c.endDate ? parseInt(c.endDate) : 0;
+      return c.campaignRunning && (endTime === 0 || now < endTime);
+    }).length;
     const totalRaised = campaigns.reduce((sum: bigint, c: any) => {
       return sum + BigInt(c.amountRaised);
     }, BigInt(0));
@@ -343,6 +356,16 @@ export default function CategoryPage() {
                 campaign.amountSought
               );
 
+              // Determine if campaign is actually running based on endDate
+              const now = Math.floor(Date.now() / 1000);
+              const endTime = campaign.endDate ? parseInt(campaign.endDate) : 0;
+              
+              // For campaigns without endDate (old campaigns), rely on campaignRunning flag
+              // For campaigns with endDate, check if current time has passed the end date
+              const isActuallyRunning = campaign.endDate 
+                ? (campaign.campaignRunning && now < endTime)
+                : campaign.campaignRunning;
+
               return (
                 <Link
                   key={campaign.id}
@@ -354,7 +377,7 @@ export default function CategoryPage() {
                       <h3 className="font-semibold text-lg text-gray-900 dark:text-white line-clamp-2 flex-1">
                         {campaign.content?.title || campaign.title || 'Untitled Campaign'}
                       </h3>
-                      {campaign.campaignRunning ? (
+                      {isActuallyRunning ? (
                         <span className="ml-2 px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full whitespace-nowrap flex-shrink-0">
                           Active
                         </span>

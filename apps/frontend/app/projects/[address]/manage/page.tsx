@@ -1,13 +1,14 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { useQuery } from '@apollo/client/react';
 import { GET_CAMPAIGN_MANAGE_DATA } from '@/lib/queries/campaign-manage';
 import { Campaign } from '@/types/campaign';
 import { useState, useEffect } from 'react';
 import { formatEther } from 'viem';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Loader2,
@@ -23,7 +24,6 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { CATEGORIES, MILESTONE_STATUS } from '@/lib/constants';
-import { addressToSubgraphId, subgraphIdToAddress } from '@/lib/utils';
 import { filterActiveDonations } from '@/lib/filterActiveDonations';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
 
@@ -35,18 +35,18 @@ export default function CampaignManagePage() {
   const addressParam = params.address as string;
   const { address: walletAddress, isConnected } = useAccount();
 
-  // Convert address to subgraph ID format if it looks like a normal address
-  const campaignId = addressParam.startsWith('0x') && addressParam.length === 42
-    ? addressToSubgraphId(addressParam.toLowerCase())
-    : addressParam.toLowerCase();
+  // Use the address directly as campaign ID (lowercased for consistency)
+  const campaignId = addressParam.toLowerCase();
 
-  // Get the actual contract address for blockchain interactions
-  const contractAddress = addressParam.startsWith('0x') && addressParam.length === 42
-    ? addressParam
-    : subgraphIdToAddress(addressParam);
+  // The contract address is the same as the campaign ID
+  const contractAddress = addressParam;
 
   const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
   const [showEndCampaignModal, setShowEndCampaignModal] = useState(false);
+  const [showExtendDurationModal, setShowExtendDurationModal] = useState(false);
+  const [showVotingPeriodModal, setShowVotingPeriodModal] = useState(false);
+  const [newDuration, setNewDuration] = useState<number>(30);
+  const [votingPeriodDays, setVotingPeriodDays] = useState<number>(14);
   const [campaignTitle, setCampaignTitle] = useState<string>('');
 
   const { data, loading, error, refetch } = useQuery(GET_CAMPAIGN_MANAGE_DATA, {
@@ -55,6 +55,18 @@ export default function CampaignManagePage() {
   });
 
   const campaign: Campaign | undefined = (data as any)?.campaign;
+
+  // Read campaign ended status directly from blockchain for real-time accuracy
+  const { data: campaignEndedOnChain, refetch: refetchCampaignStatus } = useReadContract({
+    address: contractAddress as `0x${string}`,
+    abi: CROWD_FUNDING_ABI,
+    functionName: 'campaignEnded',
+  });
+
+  // Use on-chain data if available, otherwise fall back to subgraph
+  const isCampaignRunning = campaignEndedOnChain !== undefined 
+    ? !campaignEndedOnChain 
+    : campaign?.campaignRunning ?? true;
 
   // Fetch campaign title from Arweave if not in subgraph
   useEffect(() => {
@@ -82,8 +94,8 @@ export default function CampaignManagePage() {
     }
   }, [campaign]);
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: txError } = useWaitForTransactionReceipt({
     hash,
   });
 
@@ -107,25 +119,168 @@ export default function CampaignManagePage() {
   useEffect(() => {
     if (isSuccess) {
       refetch();
+      refetchCampaignStatus();
       setSelectedMilestone(null);
-      setShowEndCampaignModal(false);
+      toast.success('Transaction confirmed successfully!');
     }
-  }, [isSuccess, refetch]);
+  }, [isSuccess, refetch, refetchCampaignStatus]);
+
+  // Show transaction pending state
+  useEffect(() => {
+    if (isPending) {
+      toast.loading('Waiting for wallet confirmation...', { id: 'tx-pending' });
+    } else {
+      toast.dismiss('tx-pending');
+    }
+  }, [isPending]);
+
+  // Show transaction confirming state
+  useEffect(() => {
+    if (isConfirming) {
+      toast.loading('Transaction confirming on blockchain...', { id: 'tx-confirming' });
+    } else {
+      toast.dismiss('tx-confirming');
+    }
+  }, [isConfirming]);
+
+  // Handle transaction errors
+  useEffect(() => {
+    if (writeError) {
+      toast.dismiss('tx-pending');
+      toast.dismiss('tx-confirming');
+      
+      const errorMessage = writeError.message || 'Transaction failed';
+      
+      // Check for specific error patterns
+      if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
+        toast.error('Transaction rejected by user');
+      } else if (errorMessage.includes('insufficient funds')) {
+        toast.error('Insufficient funds for transaction');
+      } else if (errorMessage.includes('CampaignAlreadyEnded')) {
+        toast.error('Campaign has already ended');
+      } else if (errorMessage.includes('Only owner')) {
+        toast.error('Only campaign owner can perform this action');
+      } else {
+        toast.error('Transaction failed: ' + errorMessage.substring(0, 100));
+      }
+      
+      console.error('Write error:', writeError);
+    }
+  }, [writeError]);
+
+  useEffect(() => {
+    if (txError) {
+      toast.dismiss('tx-confirming');
+      toast.error('Transaction failed on blockchain');
+      console.error('Transaction error:', txError);
+    }
+  }, [txError]);
+
+  // Handle transaction errors (legacy)
+  useEffect(() => {
+    if (hash && !isConfirming && !isSuccess) {
+      const checkError = async () => {
+        // Wait a bit to see if transaction fails
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!isSuccess && !isConfirming) {
+          toast.error('Transaction failed. Please try again.');
+        }
+      };
+      checkError();
+    }
+  }, [hash, isConfirming, isSuccess]);
 
   const handleWithdrawMilestone = (milestoneId: string) => {
-    writeContract({
-      address: contractAddress as `0x${string}`,
-      abi: CROWD_FUNDING_ABI,
-      functionName: 'withdrawMilestone',
-    });
+    try {
+      writeContract({
+        address: contractAddress as `0x${string}`,
+        abi: CROWD_FUNDING_ABI,
+        functionName: 'withdrawMilestone',
+      });
+      toast.info('Initiating milestone withdrawal...');
+    } catch (error) {
+      toast.error('Failed to initiate withdrawal');
+      console.error(error);
+    }
   };
 
   const handleEndCampaign = () => {
-    writeContract({
-      address: contractAddress as `0x${string}`,
-      abi: CROWD_FUNDING_ABI,
-      functionName: 'endCampaign',
-    });
+    setShowEndCampaignModal(false); // Close modal immediately
+    
+    // Check if campaign is already ended using real-time on-chain data
+    if (!isCampaignRunning) {
+      toast.error('Campaign has already ended');
+      return;
+    }
+    
+    // Check if user is the owner
+    if (campaign?.owner.id.toLowerCase() !== walletAddress?.toLowerCase()) {
+      toast.error('Only the campaign owner can end the campaign');
+      return;
+    }
+    
+    try {
+      writeContract({
+        address: contractAddress as `0x${string}`,
+        abi: CROWD_FUNDING_ABI,
+        functionName: 'endCampaign',
+      });
+      toast.info('Ending campaign...');
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to end campaign';
+      toast.error(errorMessage);
+      console.error('End campaign error:', error);
+    }
+  };
+
+  const handleExtendDuration = () => {
+    setShowExtendDurationModal(false); // Close modal immediately
+    
+    try {
+      // Calculate new timestamp (current time + additional days)
+      const additionalSeconds = newDuration * 24 * 60 * 60;
+      const newTimestamp = Math.floor(Date.now() / 1000) + additionalSeconds;
+      
+      writeContract({
+        address: contractAddress as `0x${string}`,
+        abi: CROWD_FUNDING_ABI,
+        functionName: 'increaseCampaignPeriod',
+        args: [BigInt(newTimestamp)],
+      });
+      toast.info(`Extending campaign by ${newDuration} days...`);
+    } catch (error) {
+      toast.error('Failed to extend campaign duration');
+      console.error(error);
+    }
+  };
+
+  const handleSetVotingPeriod = () => {
+    setShowVotingPeriodModal(false); // Close modal immediately
+    
+    // Validation
+    if (votingPeriodDays < 1 || votingPeriodDays > 90) {
+      toast.error('Voting period must be between 1 and 90 days');
+      return;
+    }
+    
+    // Check if campaign is already ended
+    if (!isCampaignRunning) {
+      toast.error('Cannot change voting period after campaign ends');
+      return;
+    }
+    
+    try {
+      writeContract({
+        address: contractAddress as `0x${string}`,
+        abi: CROWD_FUNDING_ABI,
+        functionName: 'setVotingPeriod',
+        args: [BigInt(votingPeriodDays)],
+      });
+      toast.info(`Setting voting period to ${votingPeriodDays} days...`);
+    } catch (error) {
+      toast.error('Failed to set voting period');
+      console.error(error);
+    }
   };
 
   if (!isConnected) {
@@ -204,11 +359,11 @@ export default function CampaignManagePage() {
                 <div className="flex items-center gap-2">
                   <span className={`
                     px-3 py-1 rounded-full text-sm font-medium
-                    ${campaign.campaignRunning
+                    ${isCampaignRunning
                       ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}
                   `}>
-                    {campaign.campaignRunning ? 'Active' : 'Ended'}
+                    {isCampaignRunning ? 'Active' : 'Ended'}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     Campaign ID: {contractAddress.slice(0, 6)}...{contractAddress.slice(-4)}
@@ -284,9 +439,9 @@ export default function CampaignManagePage() {
             <div className="text-lg font-bold text-gray-900 dark:text-white">
               {new Date(parseInt(campaign.dateCreated) * 1000).toLocaleDateString()}
             </div>
-            {campaign.dateEnded && (
+            {campaign.endDate && (
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Ends: {new Date(parseInt(campaign.dateEnded) * 1000).toLocaleDateString()}
+                Ends: {new Date(parseInt(campaign.endDate) * 1000).toLocaleDateString()}
               </div>
             )}
           </div>
@@ -302,7 +457,7 @@ export default function CampaignManagePage() {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                   Milestones
                 </h2>
-                {canCreateMilestone && campaign.campaignRunning && (
+                {canCreateMilestone && isCampaignRunning && (
                   <Link
                     href={`/projects/${addressParam}/milestone/new`}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -323,7 +478,16 @@ export default function CampaignManagePage() {
                       [MILESTONE_STATUS.DECLINED]: { label: 'Declined', color: 'red' },
                     };
                     const status = statusInfo[milestone.status as keyof typeof statusInfo];
-                    const canWithdraw = milestone.status === MILESTONE_STATUS.APPROVED;
+                    
+                    // First milestone can be withdrawn if campaign ended and status is PENDING
+                    // Subsequent milestones can only be withdrawn after voting approval (PENDING with voting ended or APPROVED)
+                    const isFirstMilestone = index === 0;
+                    const votingEnded = milestone.periodToVote ? Date.now() > parseInt(milestone.periodToVote) * 1000 : false;
+                    
+                    const canWithdraw = 
+                      (isFirstMilestone && milestone.status === MILESTONE_STATUS.PENDING && !isCampaignRunning) ||
+                      (milestone.status === MILESTONE_STATUS.PENDING && votingEnded) ||
+                      (milestone.status === MILESTONE_STATUS.APPROVED);
 
                     return (
                       <div
@@ -350,6 +514,11 @@ export default function CampaignManagePage() {
                             {milestone.status === MILESTONE_STATUS.PENDING && milestone.periodToVote && (
                               <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                                 Voting ends: {new Date(parseInt(milestone.periodToVote) * 1000).toLocaleDateString()}
+                                {index === 0 && isCampaignRunning && (
+                                  <span className="block text-xs mt-1">
+                                    💡 First milestone can be withdrawn once campaign ends (no voting required)
+                                  </span>
+                                )}
                               </div>
                             )}
 
@@ -373,7 +542,7 @@ export default function CampaignManagePage() {
                               View
                             </Link>
                             
-                            {canWithdraw && (
+                            {canWithdraw ? (
                               <button
                                 onClick={() => handleWithdrawMilestone(milestone.id)}
                                 disabled={isPending || isConfirming}
@@ -386,7 +555,15 @@ export default function CampaignManagePage() {
                                 )}
                                 Withdraw
                               </button>
-                            )}
+                            ) : milestone.status === MILESTONE_STATUS.PENDING && !votingEnded ? (
+                              <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm cursor-not-allowed" title="Wait for voting period to end">
+                                Voting in progress
+                              </div>
+                            ) : milestone.status === MILESTONE_STATUS.DECLINED ? (
+                              <div className="px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-sm">
+                                Declined
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -399,7 +576,7 @@ export default function CampaignManagePage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
                     No milestones created yet
                   </p>
-                  {canCreateMilestone && campaign.campaignRunning && (
+                  {canCreateMilestone && isCampaignRunning && (
                     <Link
                       href={`/projects/${addressParam}/milestone/new`}
                       className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -413,22 +590,40 @@ export default function CampaignManagePage() {
             </div>
 
             {/* Campaign Actions */}
-            {campaign.campaignRunning && (
+            {isCampaignRunning && (
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                   Campaign Actions
                 </h2>
                 
-                <button
-                  onClick={() => setShowEndCampaignModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                >
-                  <XCircle className="w-4 h-4" />
-                  End Campaign Early
-                </button>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShowExtendDurationModal(true)}
+                    className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Extend Campaign Duration
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowVotingPeriodModal(true)}
+                    className="w-full flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Set Voting Period
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowEndCampaignModal(true)}
+                    className="w-full flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    End Campaign Early
+                  </button>
+                </div>
                 
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Ending the campaign early will stop all donations and prevent new milestones.
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+                  Extend the campaign duration to give more time for fundraising, or end it early to stop all donations.
                 </p>
               </div>
             )}
@@ -512,6 +707,136 @@ export default function CampaignManagePage() {
                     <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                   ) : (
                     'End Campaign'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Extend Duration Modal */}
+        {showExtendDurationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Extend Campaign Duration
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Add more time to your campaign to continue accepting donations.
+              </p>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Additional Days
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={newDuration}
+                  onChange={(e) => setNewDuration(parseInt(e.target.value) || 30)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter number of days"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Campaign can be extended up to 1 year from now
+                </p>
+              </div>
+
+              {campaign.endDate && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Current end date: {new Date(parseInt(campaign.endDate) * 1000).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
+                    New end date: {new Date(Date.now() + newDuration * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExtendDurationModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExtendDuration}
+                  disabled={isPending || isConfirming || !newDuration || newDuration < 1}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+                >
+                  {isPending || isConfirming ? (
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                  ) : (
+                    'Extend Duration'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Set Voting Period Modal */}
+        {showVotingPeriodModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Set Voting Period
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Configure how long donors have to vote on milestones. This applies to all future milestones.
+              </p>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Voting Period (Days)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="90"
+                  value={votingPeriodDays}
+                  onChange={(e) => setVotingPeriodDays(parseInt(e.target.value) || 14)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter number of days (1-90)"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Voting period must be between 1 and 90 days
+                </p>
+              </div>
+
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3 mb-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Current voting period:</strong> 14 days (default)
+                </p>
+                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mt-1">
+                  New voting period: {votingPeriodDays} day{votingPeriodDays !== 1 ? 's' : ''}
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                  ⚠️ This setting applies to all future milestones. Existing milestone voting periods remain unchanged.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowVotingPeriodModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSetVotingPeriod}
+                  disabled={isPending || isConfirming || !votingPeriodDays || votingPeriodDays < 1 || votingPeriodDays > 90}
+                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+                >
+                  {isPending || isConfirming ? (
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                  ) : (
+                    'Set Period'
                   )}
                 </button>
               </div>

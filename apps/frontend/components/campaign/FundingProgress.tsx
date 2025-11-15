@@ -22,10 +22,22 @@ export function FundingProgress({ campaign, onRefetch }: FundingProgressProps) {
 
   // Calculate time remaining
   const now = Date.now() / 1000;
-  const endTime = campaign.dateEnded ? parseInt(campaign.dateEnded) : 0;
+  const endTime = campaign.endDate ? parseInt(campaign.endDate) : 0;
   const timeRemaining = endTime - now;
   const daysRemaining = Math.max(0, Math.floor(timeRemaining / 86400));
   const hoursRemaining = Math.max(0, Math.floor((timeRemaining % 86400) / 3600));
+
+  // Read campaign ended status directly from blockchain for real-time accuracy
+  const { data: campaignEndedOnChain } = useReadContract({
+    address: (campaign.contractAddress || campaign.id) as `0x${string}`,
+    abi: CROWDFUNDING_ABI.abi,
+    functionName: 'campaignEnded',
+  });
+
+  // Use on-chain data if available, otherwise fall back to subgraph
+  const isCampaignRunning = campaignEndedOnChain !== undefined 
+    ? !campaignEndedOnChain 
+    : campaign?.campaignRunning ?? true;
 
   // Check if user has donated to this campaign
   const { data: userDonation } = useReadContract({
@@ -122,7 +134,7 @@ export function FundingProgress({ campaign, onRefetch }: FundingProgressProps) {
 
       {/* Action Buttons */}
       <div className="space-y-3 mb-4">
-        {campaign.campaignRunning ? (
+        {isCampaignRunning ? (
           <Link
             href={`/projects/${campaign.contractAddress || campaign.id}/donate`}
             className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-4 rounded-lg transition-colors shadow-lg shadow-blue-600/30"

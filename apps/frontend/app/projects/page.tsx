@@ -27,7 +27,7 @@ export default function ProjectsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [campaignsWithTitles, setCampaignsWithTitles] = useState<Campaign[]>([]);
 
-  // Build GraphQL where filter
+  // Build GraphQL where filter (don't filter by status at query level, do it client-side)
   const whereFilter = useMemo(() => {
     const filter: any = {};
 
@@ -35,14 +35,10 @@ export default function ProjectsPage() {
       filter.category = selectedCategory;
     }
 
-    if (selectedStatus === 'active') {
-      filter.campaignRunning = true;
-    } else if (selectedStatus === 'ended') {
-      filter.campaignRunning = false;
-    }
+    // Don't filter by campaignRunning here - we'll do it client-side with real-time checks
 
     return filter;
-  }, [selectedCategory, selectedStatus]);
+  }, [selectedCategory]);
 
   // Build orderBy and orderDirection
   const { orderBy, orderDirection } = useMemo(() => {
@@ -112,6 +108,24 @@ export default function ProjectsPage() {
     // Use campaigns with fetched titles if available, otherwise use raw data
     let campaigns = campaignsWithTitles.length > 0 ? campaignsWithTitles : (data?.campaigns || []);
 
+    // Get current timestamp for real-time status checks
+    const now = Math.floor(Date.now() / 1000);
+
+    // Apply status filter with real-time end date check
+    if (selectedStatus === 'active') {
+      campaigns = campaigns.filter((campaign) => {
+        if (!campaign) return false;
+        const endTime = campaign.endDate ? parseInt(campaign.endDate) : 0;
+        return campaign.campaignRunning && (endTime === 0 || now < endTime);
+      });
+    } else if (selectedStatus === 'ended') {
+      campaigns = campaigns.filter((campaign) => {
+        if (!campaign) return false;
+        const endTime = campaign.endDate ? parseInt(campaign.endDate) : 0;
+        return !campaign.campaignRunning || (endTime > 0 && now >= endTime);
+      });
+    }
+
     // Apply progress filter
     if (selectedProgress !== 'all') {
       campaigns = campaigns.filter((campaign) => {
@@ -150,7 +164,7 @@ export default function ProjectsPage() {
     }
 
     return campaigns;
-  }, [campaignsWithTitles, data?.campaigns, selectedProgress, searchQuery]);
+  }, [campaignsWithTitles, data?.campaigns, selectedStatus, selectedProgress, searchQuery]);
 
   const totalPages = Math.ceil((filteredCampaigns.length || 0) / ITEMS_PER_PAGE);
 

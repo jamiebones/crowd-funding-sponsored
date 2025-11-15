@@ -2,7 +2,8 @@ import { Campaign, CampaignContent } from '@/types/campaign';
 import { CATEGORIES, BLOCK_EXPLORER } from '@/lib/constants';
 import { Calendar, User, ExternalLink, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
+import CROWDFUNDING_ABI from '@/abis/CrowdFunding.json';
 
 interface CampaignHeaderProps {
   campaign: Campaign;
@@ -14,6 +15,18 @@ export function CampaignHeader({ campaign, campaignContent }: CampaignHeaderProp
   const category = CATEGORIES.find((c) => c.id === campaign.category);
   const createdDate = new Date(parseInt(campaign.dateCreated) * 1000);
   const isOwner = walletAddress && campaign.owner.id.toLowerCase() === walletAddress.toLowerCase();
+
+  // Read campaign ended status directly from blockchain for real-time accuracy
+  const { data: campaignEndedOnChain } = useReadContract({
+    address: (campaign.contractAddress || campaign.id) as `0x${string}`,
+    abi: CROWDFUNDING_ABI.abi,
+    functionName: 'campaignEnded',
+  });
+
+  // Use on-chain data if available, otherwise fall back to subgraph
+  const isCampaignRunning = campaignEndedOnChain !== undefined 
+    ? !campaignEndedOnChain 
+    : campaign?.campaignRunning ?? true;
 
   // Use campaignContent.title if available, otherwise fall back to campaign.content.title
   const displayTitle = campaignContent?.title || campaign.content?.title || campaign.title || 'Untitled Campaign';
@@ -53,7 +66,7 @@ export function CampaignHeader({ campaign, campaignContent }: CampaignHeaderProp
             {category.name}
           </span>
         )}
-        {campaign.campaignRunning ? (
+        {isCampaignRunning ? (
           <span className="inline-flex items-center gap-2 bg-green-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
             Active
