@@ -339,7 +339,7 @@ async function main() {
 
         // Verify ownership transfer
         currentOwner = await factory.owner();
-        
+
         // Check if this is a 2-step ownership (Ownable2Step)
         if (currentOwner.toLowerCase() === deployer.address.toLowerCase()) {
             // Still the old owner, must be 2-step process
