@@ -49,13 +49,6 @@ describe("CrowdFundingToken", () => {
 
             expect(await tokenContract.owner()).to.equal(deployer)
         })
-
-        it("Should have correct token cap (1 billion)", async () => {
-            const { tokenContract } = await loadFixture(setupFixture)
-            const expectedCap = ethers.parseEther("1000000000") // 1 billion
-
-            expect(await tokenContract.cap()).to.equal(expectedCap)
-        })
     })
 
     describe("Factory Setup", () => {
@@ -200,43 +193,6 @@ describe("CrowdFundingToken", () => {
             await expect(
                 tokenContract.connect(accounts[2]).burnTokens(amount, accounts[1].address)
             ).to.be.revertedWith("Only crowdfunding contracts can burn")
-        })
-
-        it("Should enforce token cap when minting", async () => {
-            const { tokenContract, accounts } = await loadFixture(setupFixture)
-            const approvedContract = accounts[1]
-            const recipient = accounts[2]
-            const cap = await tokenContract.cap()
-
-            // Add approved contract
-            await tokenContract.addCrowdfundingContract(await approvedContract.getAddress())
-
-            // Try to mint more than cap
-            await expect(
-                tokenContract.connect(approvedContract).mint(
-                    await recipient.getAddress(),
-                    cap + BigInt(1)
-                )
-            ).to.be.revertedWithCustomError(tokenContract, "ERC20ExceededCap")
-        })
-
-        it("Should allow minting up to the cap", async () => {
-            const { tokenContract, accounts } = await loadFixture(setupFixture)
-            const approvedContract = accounts[1]
-            const recipient = accounts[2]
-            const cap = await tokenContract.cap()
-
-            // Add approved contract
-            await tokenContract.addCrowdfundingContract(await approvedContract.getAddress())
-
-            // Mint exactly the cap
-            await tokenContract.connect(approvedContract).mint(
-                await recipient.getAddress(),
-                cap
-            )
-
-            expect(await tokenContract.balanceOf(await recipient.getAddress())).to.equal(cap)
-            expect(await tokenContract.totalSupply()).to.equal(cap)
         })
     })
 

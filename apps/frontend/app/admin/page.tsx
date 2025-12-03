@@ -33,7 +33,9 @@ export default function AdminPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const [newFee, setNewFee] = useState('');
+  const [newScale, setNewScale] = useState('');
   const [showSetFeeModal, setShowSetFeeModal] = useState(false);
+  const [showSetScaleModal, setShowSetScaleModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [campaignsWithTitles, setCampaignsWithTitles] = useState<any[]>([]);
 
@@ -49,6 +51,13 @@ export default function AdminPage() {
     address: FACTORY_ADDRESS,
     abi: FACTORY_ABI,
     functionName: 'getFundingFee',
+  });
+
+  // Read current donation scale
+  const { data: currentScale, refetch: refetchScale } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: 'getDonationScale',
   });
 
   // Get factory balance using contract's getBalance function
@@ -72,6 +81,19 @@ export default function AdminPage() {
   const { isLoading: isSetFeeConfirming, isSuccess: isSetFeeSuccess } =
     useWaitForTransactionReceipt({
       hash: setFeeHash,
+    });
+
+  // Set donation scale
+  const {
+    writeContract: setDonationScale,
+    data: setScaleHash,
+    isPending: isSetScalePending,
+    error: setScaleError,
+  } = useWriteContract();
+
+  const { isLoading: isSetScaleConfirming, isSuccess: isSetScaleSuccess } =
+    useWaitForTransactionReceipt({
+      hash: setScaleHash,
     });
 
   // Withdraw factory funds
@@ -149,6 +171,15 @@ export default function AdminPage() {
     }
   }, [isSetFeeSuccess, refetchFee]);
 
+  // Handle set scale success
+  useEffect(() => {
+    if (isSetScaleSuccess) {
+      setShowSetScaleModal(false);
+      setNewScale('');
+      refetchScale();
+    }
+  }, [isSetScaleSuccess, refetchScale]);
+
   // Handle withdraw success
   useEffect(() => {
     if (isWithdrawSuccess) {
@@ -174,6 +205,18 @@ export default function AdminPage() {
       abi: FACTORY_ABI,
       functionName: 'setFundingFee',
       args: [parseEther(newFee)],
+    });
+  };
+
+  const handleSetScale = () => {
+    const scaleValue = parseInt(newScale);
+    if (!newScale || scaleValue <= 0 || scaleValue > 1000) return;
+
+    setDonationScale({
+      address: FACTORY_ADDRESS,
+      abi: FACTORY_ABI,
+      functionName: 'setDonationScale',
+      args: [BigInt(scaleValue)],
     });
   };
 
@@ -323,7 +366,7 @@ export default function AdminPage() {
         </div>
 
         {/* Platform Management */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Set Funding Fee */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -345,6 +388,33 @@ export default function AdminPage() {
               className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Update Fee
+            </button>
+          </div>
+
+          {/* Set Donation Scale */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Activity className="h-6 w-6 text-purple-600" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Token Reward Scale
+              </h2>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Current Scale:</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {currentScale ? currentScale.toString() : '1'}x
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                1 BNB = {currentScale ? currentScale.toString() : '1'} tokens
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowSetScaleModal(true)}
+              className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Update Scale
             </button>
           </div>
 
@@ -664,6 +734,114 @@ export default function AdminPage() {
                     </>
                   ) : (
                     'Confirm Withdrawal'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Set Donation Scale Modal */}
+        {showSetScaleModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="set-scale-modal-title"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+              <h3 id="set-scale-modal-title" className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Update Token Reward Scale
+              </h3>
+
+              <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <p className="text-sm text-purple-800 dark:text-purple-200 mb-2">
+                  The donation scale determines how many tokens donors receive per BNB donated.
+                </p>
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  Example: A scale of 5x means donors get 5 tokens for every 1 BNB donated.
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label htmlFor="new-scale-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  New Scale Multiplier
+                </label>
+                <input
+                  id="new-scale-input"
+                  type="number"
+                  value={newScale}
+                  onChange={(e) => setNewScale(e.target.value)}
+                  placeholder="Enter scale (1-1000)"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  disabled={isSetScalePending || isSetScaleConfirming}
+                  aria-describedby="scale-input-description"
+                />
+                <p id="scale-input-description" className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Recommended range: 1-1000. Contract enforces max of 1000.
+                </p>
+              </div>
+
+              {setScaleError && (
+                <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 rounded-lg flex items-start gap-2" role="alert">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {setScaleError.message}
+                  </p>
+                </div>
+              )}
+
+              {isSetScaleSuccess && (
+                <div className="mb-4 p-3 bg-green-100 dark:bg-green-900 rounded-lg flex items-start gap-2" role="status">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-green-600 dark:text-green-400 mb-1">
+                      Scale updated successfully!
+                    </p>
+                    <a
+                      href={`${BLOCK_EXPLORER}/tx/${setScaleHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-green-600 dark:text-green-400 hover:underline"
+                      aria-label="View transaction on block explorer"
+                    >
+                      View transaction
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowSetScaleModal(false);
+                    setNewScale('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  disabled={isSetScalePending || isSetScaleConfirming}
+                  aria-label="Cancel scale update"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSetScale}
+                  disabled={
+                    !newScale || 
+                    parseInt(newScale) <= 0 || 
+                    parseInt(newScale) > 1000 || 
+                    isSetScalePending || 
+                    isSetScaleConfirming
+                  }
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  aria-label="Confirm scale update"
+                >
+                  {isSetScalePending || isSetScaleConfirming ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <span>{isSetScalePending ? 'Confirm in wallet...' : 'Updating...'}</span>
+                    </>
+                  ) : (
+                    'Update Scale'
                   )}
                 </button>
               </div>

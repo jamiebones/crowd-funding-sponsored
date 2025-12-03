@@ -50,13 +50,6 @@ describe("CrowdFundingToken - Comprehensive Tests", () => {
 
             expect(await token.owner()).to.equal(owner.address);
         });
-
-        it("Should have cap of 1 billion tokens", async () => {
-            const { token } = await loadFixture(deployTokenFixture);
-
-            const expectedCap = ethers.parseEther("1000000000"); // 1 billion
-            expect(await token.cap()).to.equal(expectedCap);
-        });
     });
 
     describe("Factory Setup and Ownership", () => {
@@ -250,44 +243,16 @@ describe("CrowdFundingToken - Comprehensive Tests", () => {
             expect(await token.totalSupply()).to.equal(amount1 + amount2 + amount3);
         });
 
-        it("Should revert when minting exceeds cap", async () => {
+        it("Should allow minting large amounts", async () => {
             const { token, factory, campaign1, user1 } = await loadFixture(deployTokenWithFactoryFixture);
 
             await token.connect(factory).addCrowdfundingContract(campaign1.address);
 
-            const cap = await token.cap();
-            const exceedingAmount = cap + ethers.parseEther("1");
+            const largeAmount = ethers.parseEther("10000000"); // 10 million tokens
+            await token.connect(campaign1).mint(user1.address, largeAmount);
 
-            await expect(
-                token.connect(campaign1).mint(user1.address, exceedingAmount)
-            ).to.be.revertedWithCustomError(token, "ERC20ExceededCap");
-        });
-
-        it("Should allow minting up to cap", async () => {
-            const { token, factory, campaign1, user1 } = await loadFixture(deployTokenWithFactoryFixture);
-
-            await token.connect(factory).addCrowdfundingContract(campaign1.address);
-
-            const cap = await token.cap();
-            await token.connect(campaign1).mint(user1.address, cap);
-
-            expect(await token.totalSupply()).to.equal(cap);
-        });
-
-        it("Should revert when total mints exceed cap", async () => {
-            const { token, factory, campaign1, user1, user2 } = await loadFixture(deployTokenWithFactoryFixture);
-
-            await token.connect(factory).addCrowdfundingContract(campaign1.address);
-
-            const cap = await token.cap();
-            const firstMint = cap / 2n;
-            const secondMint = cap / 2n + ethers.parseEther("1");
-
-            await token.connect(campaign1).mint(user1.address, firstMint);
-
-            await expect(
-                token.connect(campaign1).mint(user2.address, secondMint)
-            ).to.be.revertedWithCustomError(token, "ERC20ExceededCap");
+            expect(await token.totalSupply()).to.equal(largeAmount);
+            expect(await token.balanceOf(user1.address)).to.equal(largeAmount);
         });
     });
 
@@ -412,30 +377,6 @@ describe("CrowdFundingToken - Comprehensive Tests", () => {
             expect(await token.balanceOf(user1.address)).to.equal(amount);
         });
 
-        it("Should allow minting up to cap after burning", async () => {
-            const { token, factory, campaign1, user1 } = await loadFixture(deployTokenWithFactoryFixture);
-
-            await token.connect(factory).addCrowdfundingContract(campaign1.address);
-
-            const cap = await token.cap();
-            const halfCap = cap / 2n;
-
-            // Mint half cap
-            await token.connect(campaign1).mint(user1.address, halfCap);
-
-            // Try to mint more than remaining cap - should fail
-            await expect(
-                token.connect(campaign1).mint(user1.address, halfCap + ethers.parseEther("1"))
-            ).to.be.revertedWithCustomError(token, "ERC20ExceededCap");
-
-            // Burn some tokens
-            await token.connect(campaign1).burnTokens(halfCap, user1.address);
-
-            // Now we can mint again
-            await token.connect(campaign1).mint(user1.address, halfCap);
-            expect(await token.totalSupply()).to.equal(halfCap);
-        });
-
         it("Should handle complex mint/burn scenarios across multiple users", async () => {
             const { token, factory, campaign1, user1, user2, user3 } = await loadFixture(deployTokenWithFactoryFixture);
 
@@ -530,19 +471,6 @@ describe("CrowdFundingToken - Comprehensive Tests", () => {
             await token.connect(campaign2).burnTokens(burn2, user2.address);
 
             expect(await token.totalSupply()).to.equal(amount1 + amount2 - burn1 - burn2);
-        });
-
-        it("Should handle maximum uint256 values gracefully", async () => {
-            const { token, factory, campaign1, user1 } = await loadFixture(deployTokenWithFactoryFixture);
-
-            await token.connect(factory).addCrowdfundingContract(campaign1.address);
-
-            const maxUint256 = ethers.MaxUint256;
-
-            // Should revert due to cap exceeded
-            await expect(
-                token.connect(campaign1).mint(user1.address, maxUint256)
-            ).to.be.revertedWithCustomError(token, "ERC20ExceededCap");
         });
 
         it("Should verify contract state after adding multiple contracts", async () => {

@@ -173,12 +173,16 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             expect(await campaign.donors(donor1.address)).to.equal(donationAmount);
         });
 
-        it("Should mint tokens equal to donation amount", async () => {
-            const { campaign, token, donor1 } = await loadFixture(deployCampaignFixture);
+        it("Should mint tokens equal to donation amount (with default 1x scale)", async () => {
+            const { campaign, token, donor1, factory } = await loadFixture(deployCampaignFixture);
+
+            // Verify default scale is 1
+            expect(await factory.getDonationScale()).to.equal(1);
 
             const donationAmount = ethers.parseEther("1");
             await campaign.connect(donor1).giveDonationToCause({ value: donationAmount });
 
+            // With 1x scale, tokens = donation amount
             expect(await token.balanceOf(donor1.address)).to.equal(donationAmount);
         });
 
@@ -1000,12 +1004,12 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             expect(await campaign.votingPeriodDays()).to.equal(21);
         });
 
-        it("Should allow setting voting period to 1 day", async () => {
+        it("Should allow setting voting period to 14 days (minimum)", async () => {
             const { campaign, campaignOwner } = await loadFixture(deployCampaignFixture);
 
-            await campaign.connect(campaignOwner).setVotingPeriod(1);
+            await campaign.connect(campaignOwner).setVotingPeriod(14);
 
-            expect(await campaign.votingPeriodDays()).to.equal(1);
+            expect(await campaign.votingPeriodDays()).to.equal(14);
         });
 
         it("Should allow setting voting period to 90 days", async () => {
@@ -1021,7 +1025,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             await expect(
                 campaign.connect(campaignOwner).setVotingPeriod(0)
-            ).to.be.revertedWith("Voting period must be 1-90 days");
+            ).to.be.revertedWith("Voting period must be 14-90 days");
         });
 
         it("Should revert when setting voting period above 90", async () => {
@@ -1029,7 +1033,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
 
             await expect(
                 campaign.connect(campaignOwner).setVotingPeriod(91)
-            ).to.be.revertedWith("Voting period must be 1-90 days");
+            ).to.be.revertedWith("Voting period must be 14-90 days");
         });
 
         it("Should revert when non-owner sets voting period", async () => {
@@ -1360,7 +1364,7 @@ describe("CrowdFunding - Comprehensive Tests", () => {
         it("Should handle custom voting period", async () => {
             const { campaign, campaignOwner, donor1 } = await loadFixture(deployCampaignFixture);
 
-            await campaign.connect(campaignOwner).setVotingPeriod(7); // 7 days
+            await campaign.connect(campaignOwner).setVotingPeriod(21); // 21 days
 
             await campaign.connect(donor1).giveDonationToCause({ value: ethers.parseEther("10") });
 
@@ -1374,8 +1378,8 @@ describe("CrowdFunding - Comprehensive Tests", () => {
             await campaign.connect(campaignOwner).createNewMilestone("milestone2");
             await campaign.connect(donor1).voteOnMilestone(true);
 
-            // Should allow withdrawal after 7 days
-            await time.increase(7 * 24 * 60 * 60 + 1);
+            // Should allow withdrawal after 21 days
+            await time.increase(21 * 24 * 60 * 60 + 1);
 
             await expect(
                 campaign.connect(campaignOwner).withdrawMilestone()

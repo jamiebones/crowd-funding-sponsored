@@ -1,0 +1,54 @@
+{
+  "network": "bsc",
+  "chainId": 56,
+  "deployer": "0xdd0574c2407AF09368cEAB34A02e332e7Ad41C4B",
+  "factoryOwner": "0x9e10b50833504655b4671f21900602e3c569c83c",
+  "pendingOwner": null,
+  "timestamp": "2025-12-03T22:20:45.214Z",
+  "blockNumber": 70398552,
+  "gasUsed": {
+    "total": "3767625",
+    "totalCost": "0.018838125",
+    "currency": "BNB"
+  },
+  "contracts": {
+    "CrowdFundingToken": {
+      "address": "0xdCd26825aa0851376E3002e89807046Be7B692e8",
+      "transactionHash": "0xd1bb58d22ce681f837ed42442f8f0032d6de209ae8a83e98122345ea34d7af07",
+      "blockNumber": 0,
+      "owner": "0x79bC92fCD77478436f93a197df8c1F6f38628ED8",
+      "verified": false,
+      "abi": "abis/CrowdFundingToken.json"
+    },
+    "CrowdFunding": {
+      "address": "0xf58C44465976045Cf5Bb88D64Ede43C93693A40F",
+      "transactionHash": "0xd5086c227a082c5243ad68025f9367cb6c48ec7fca5974a685f37ec5997c6259",
+      "blockNumber": 0,
+      "verified": false,
+      "abi": "abis/CrowdFunding.json"
+    },
+    "CrowdFundingFactory": {
+      "address": "0x79bC92fCD77478436f93a197df8c1F6f38628ED8",
+      "transactionHash": "0xcd94a7df44ec6ddc0a718ce03d2737eb6dab6dff89c36527ba04bbfd87f07e81",
+      "blockNumber": 0,
+      "owner": "0x9e10b50833504655b4671F21900602E3C569C83C",
+      "verified": false,
+      "abi": "abis/CrowdFundingFactory.json",
+      "constructorArgs": {
+        "implementation": "0xf58C44465976045Cf5Bb88D64Ede43C93693A40F",
+        "donationTokenAddress": "0xdCd26825aa0851376E3002e89807046Be7B692e8"
+      },
+      "config": {
+        "fundingFee": "0.000000001",
+        "donationScale": "1"
+      }
+    }
+  },
+  "transactions": {
+    "tokenDeployment": "0xd1bb58d22ce681f837ed42442f8f0032d6de209ae8a83e98122345ea34d7af07",
+    "implementationDeployment": "0xd5086c227a082c5243ad68025f9367cb6c48ec7fca5974a685f37ec5997c6259",
+    "factoryDeployment": "0xcd94a7df44ec6ddc0a718ce03d2737eb6dab6dff89c36527ba04bbfd87f07e81",
+    "tokenOwnershipTransfer": "0xed196b0eb1dd8b34e05651ab4e3e0693aca7c202d3b60527fddde26bdfa6e415",
+    "factoryOwnershipTransfer": "0x147c334479a50784c4f475497af6a2acc212fc4f51fe1fe9c872dd15e3d0f89d"
+  }
+}

@@ -1,21 +1,32 @@
+'use client';
+
 import Link from 'next/link';
-import { ArrowRight, TrendingUp, Users, Target } from 'lucide-react';
+import { ArrowRight, TrendingUp, Users, Target, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function Hero() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 py-20 md:py-32">
+    <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 py-20 md:py-32">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex flex-col items-center text-center space-y-8">
+        <div className={`flex flex-col items-center text-center space-y-8 transition-all duration-1000 ${
+          mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}>
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium">
-            <TrendingUp className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm border border-blue-200/50 dark:border-blue-700/50 shadow-lg shadow-blue-500/10 animate-pulse">
+            <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
             <span>Decentralized Crowdfunding on BSC</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 dark:text-white max-w-4xl">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 dark:text-white max-w-4xl">
             Fund Innovation,{' '}
-            <span className="text-blue-600 dark:text-blue-400">
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent animate-gradient">
               Earn Rewards
             </span>
           </h1>
@@ -45,14 +56,14 @@ export function Hero() {
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
             <Link
               href="/projects"
-              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-lg transition-colors shadow-lg shadow-blue-600/30"
+              className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-4 rounded-xl transition-all shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 hover:scale-105 transform"
             >
               Explore Projects
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               href="/new-project"
-              className="inline-flex items-center justify-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold px-8 py-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 transition-colors"
+              className="group inline-flex items-center justify-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white font-semibold px-8 py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 transition-all hover:border-blue-300 dark:hover:border-blue-600 hover:scale-105 transform shadow-lg"
             >
               Start a Campaign
             </Link>
@@ -67,8 +78,14 @@ export function Hero() {
 
       {/* Background decoration */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-1/2 top-0 -translate-x-1/2 blur-3xl opacity-30">
-          <div className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-blue-400 to-purple-400" />
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 blur-3xl opacity-30 animate-blob">
+          <div className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-blue-400 via-purple-400 to-pink-400" />
+        </div>
+        <div className="absolute right-0 top-1/3 blur-3xl opacity-20 animate-blob animation-delay-2000">
+          <div className="aspect-square w-[40rem] bg-gradient-to-br from-purple-400 to-pink-400" />
+        </div>
+        <div className="absolute left-0 bottom-0 blur-3xl opacity-20 animate-blob animation-delay-4000">
+          <div className="aspect-square w-[40rem] bg-gradient-to-tr from-blue-400 to-cyan-400" />
         </div>
       </div>
     </section>

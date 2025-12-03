@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./CrowdFundingToken.sol";
+
 /**
  * @title CrowdFundingFactory
  * @dev Factory contract for creating new crowdfunding campaigns
@@ -11,7 +12,7 @@ import "./CrowdFundingToken.sol";
 contract CrowdFundingFactory is Ownable {
     event NewCrowdFundingContractCreated(
         address indexed owner,
-        address indexed contractAddress, 
+        address indexed contractAddress,
         string contractDetailsId,
         string indexed title,
         uint8 category,
@@ -20,26 +21,29 @@ contract CrowdFundingFactory is Ownable {
     );
     event FundingFeeUpdated(uint256 oldFee, uint256 newFee);
     event FundsWithdrawn(address indexed owner, uint256 amount);
+    event DonationScaleUpdated(uint256 oldScale, uint256 newScale);
 
     // Errors
     error FundingForNewContractTooSmall();
     error CreateFundingContractFailed();
     error WithdrawalFailed();
-    error InvalidFee();   
+    error InvalidFee();
     error NoFundsToWithdraw();
     error InvalidCategory();
+    error InvalidDonationScale();
 
     // State variables
     address private immutable CROWDFUNDING_IMPLEMENTATION;
     address[] private deployedCrowdFundingContracts;
     address private crowdFundingToken;
     uint256 private fundingFee = 0.000000001 ether;
+    uint256 private donationScale = 1; // Default 1x multiplier (1 BNB = 1 token)
     CrowdFundingToken public donationToken;
-    
+
     // Track campaigns by owner
     mapping(address => address[]) public ownerToCampaigns;
 
-     enum Category {
+    enum Category {
         TECHNOLOGY,
         ARTS,
         COMMUNITY,
@@ -51,9 +55,14 @@ contract CrowdFundingFactory is Ownable {
         OTHER
     }
 
-
-    constructor(address _implementation, address _donationTokenAddress) Ownable(msg.sender) {
-        require(_implementation != address(0), "Invalid implementation address");
+    constructor(
+        address _implementation,
+        address _donationTokenAddress
+    ) Ownable(msg.sender) {
+        require(
+            _implementation != address(0),
+            "Invalid implementation address"
+        );
         CROWDFUNDING_IMPLEMENTATION = _implementation;
         donationToken = CrowdFundingToken(_donationTokenAddress);
     }
@@ -66,11 +75,14 @@ contract CrowdFundingFactory is Ownable {
         uint256 _duration
     ) external payable returns (address) {
         // Add input validation
-        require(bytes(_contractDetailsId).length > 0, "Empty contract details ID");
+        require(
+            bytes(_contractDetailsId).length > 0,
+            "Empty contract details ID"
+        );
         require(bytes(_title).length > 0, "Empty title");
         require(_goal > 0, "Goal must be greater than 0");
         require(_duration > 0, "Duration must be greater than 0");
-        
+
         // Validate category
         if (uint8(_category) > uint8(Category.OTHER)) {
             revert InvalidCategory();
@@ -81,7 +93,7 @@ contract CrowdFundingFactory is Ownable {
         }
 
         address clone = Clones.clone(CROWDFUNDING_IMPLEMENTATION);
-        
+
         // Move initialization parameters to a separate variable for better readability
         bytes memory initData = abi.encodeWithSignature(
             "initialize(string,string,uint8,uint256,uint256,address,address,address)",
@@ -104,7 +116,7 @@ contract CrowdFundingFactory is Ownable {
         ownerToCampaigns[msg.sender].push(clone);
 
         donationToken.addCrowdfundingContract(clone);
-        
+
         emit NewCrowdFundingContractCreated(
             msg.sender,
             clone,
@@ -114,7 +126,7 @@ contract CrowdFundingFactory is Ownable {
             _duration,
             _goal
         );
-        
+
         return clone;
     }
 
@@ -126,6 +138,16 @@ contract CrowdFundingFactory is Ownable {
         emit FundingFeeUpdated(oldFee, _newFee);
     }
 
+    /// @notice Set the donation scale multiplier for token rewards
+    /// @dev Only callable by factory owner (admin)
+    /// @param _newScale New scale multiplier (1 = 1x, 2 = 2x, 1000 = 1000x, etc.)
+    function setDonationScale(uint256 _newScale) external onlyOwner {
+        if (_newScale == 0 || _newScale > 1000 ) revert InvalidDonationScale();
+        uint256 oldScale = donationScale;
+        donationScale = _newScale;
+        emit DonationScaleUpdated(oldScale, _newScale);
+    }
+
     function withdrawFunds() external onlyOwner {
         uint256 balance = address(this).balance;
         if (balance == 0) revert NoFundsToWithdraw();
@@ -134,16 +156,22 @@ contract CrowdFundingFactory is Ownable {
         if (!success) {
             revert WithdrawalFailed();
         }
-        
+
         emit FundsWithdrawn(owner(), balance);
     }
 
     // View functions
-    function getDeployedCrowdFundingContracts() external view returns (address[] memory) {
+    function getDeployedCrowdFundingContracts()
+        external
+        view
+        returns (address[] memory)
+    {
         return deployedCrowdFundingContracts;
     }
 
-    function getCampaignsByOwner(address owner) external view returns (address[] memory) {
+    function getCampaignsByOwner(
+        address owner
+    ) external view returns (address[] memory) {
         return ownerToCampaigns[owner];
     }
 
@@ -151,9 +179,13 @@ contract CrowdFundingFactory is Ownable {
         return fundingFee;
     }
 
+    function getDonationScale() external view returns (uint256) {
+        return donationScale;
+    }
+
     function getBalance() external view returns (uint256) {
         return address(this).balance;
     }
 
     receive() external payable {}
-} 
+}

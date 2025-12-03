@@ -4,7 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield } from 'lucide-react';
+import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield, BarChart3 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
 export function Navbar() {
@@ -96,6 +96,22 @@ export function Navbar() {
               />
             </div>
 
+            {/* Stats Link */}
+            <Link
+              href="/stats"
+              className={`
+                hidden md:flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors
+                ${isActive('/stats')
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }
+              `}
+              title="Platform Statistics"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden lg:inline">Stats</span>
+            </Link>
+
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -165,6 +181,21 @@ export function Navbar() {
                   chainStatus="full"
                 />
               </div>
+
+              <Link
+                href="/stats"
+                onClick={() => setIsMenuOpen(false)}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors
+                  ${isActive('/stats')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }
+                `}
+              >
+                <BarChart3 className="w-5 h-5" />
+                Stats
+              </Link>
             </div>
           </div>
         )}
