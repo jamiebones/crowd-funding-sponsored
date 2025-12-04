@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   description: "Launch and fund projects with milestone-based funding, community voting, and token rewards",
 };
 
+// Force dynamic rendering to avoid SSR issues with wallet connectors
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{

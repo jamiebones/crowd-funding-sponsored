@@ -6,7 +6,7 @@ import {
     trustWallet,
     injectedWallet,
 } from '@rainbow-me/rainbowkit/wallets';
-import { bscTestnet } from 'wagmi/chains';
+import { bscTestnet, bsc} from 'wagmi/chains';
 import { http, createConfig } from 'wagmi';
 import { createStorage } from 'wagmi';
 
@@ -38,9 +38,10 @@ const connectors = connectorsForWallets(
 
 export const config = createConfig({
     connectors,
-    chains: [bscTestnet],
+    chains: [bscTestnet, bsc],
     transports: {
         [bscTestnet.id]: http(process.env.NEXT_PUBLIC_BSC_TESTNET_RPC),
+        [bsc.id]: http(process.env.NEXT_PUBLIC_BSC_MAINNET_RPC),
     },
     ssr: true,
     storage: createStorage({

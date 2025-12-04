@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@apollo/client/react';
 import { SEARCH_CAMPAIGNS } from '@/lib/queries/campaigns';
 import { Campaign } from '@/types/campaign';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { CampaignCard } from '@/components/shared/CampaignCard';
 import { CampaignCardList } from '@/components/shared/CampaignCardList';
 import { FilterBar } from '@/components/projects/FilterBar';
@@ -13,7 +13,7 @@ import { Loader2, Search as SearchIcon, Grid, List } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 12;
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
 
@@ -274,5 +274,28 @@ export default function SearchPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Loading search...
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <SearchContent />
+    </Suspense>
   );
 }
