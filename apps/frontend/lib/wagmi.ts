@@ -38,9 +38,8 @@ const connectors = connectorsForWallets(
 
 export const config = createConfig({
     connectors,
-    chains: [bscTestnet, bsc],
+    chains: [bsc],
     transports: {
-        [bscTestnet.id]: http(process.env.NEXT_PUBLIC_BSC_TESTNET_RPC),
         [bsc.id]: http(process.env.NEXT_PUBLIC_BSC_MAINNET_RPC),
     },
     ssr: true,
