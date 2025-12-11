@@ -12,6 +12,7 @@ import { apolloClient } from '@/lib/apollo';
 import { ReactNode, useState } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SkipToContent } from './SkipToContent';
+import { AuthProvider } from '@/context/authContext';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -30,10 +31,12 @@ export function Providers({ children }: { children: ReactNode }) {
               })}
             >
               <ApolloProvider client={apolloClient}>
-                <main id="main-content">
-                  {children}
-                </main>
-                <Toaster position="top-right" richColors />
+                <AuthProvider>
+                  <main id="main-content">
+                    {children}
+                  </main>
+                  <Toaster position="top-right" richColors />
+                </AuthProvider>
               </ApolloProvider>
             </RainbowKitProvider>
           </QueryClientProvider>

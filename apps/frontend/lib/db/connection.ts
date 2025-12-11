@@ -35,7 +35,11 @@ async function connectDB() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
-            dbName: 'crowdfunding', // Explicitly set database name
+            dbName: 'crowdfunding',
+            maxPoolSize: 10, // Max 10 connections in pool
+            minPoolSize: 2, // Keep 2 connections alive
+            serverSelectionTimeoutMS: 5000, // Timeout after 5s
+            socketTimeoutMS: 45000, // Close sockets after 45s
         };
 
         cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongooseInstance) => {
