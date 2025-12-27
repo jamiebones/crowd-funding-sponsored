@@ -12,15 +12,6 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
-    // Exclude problematic node_modules packages from bundling
-    config.externals = config.externals || [];
-    if (!isServer) {
-      config.externals.push({
-        'pino-pretty': 'pino-pretty',
-        'encoding': 'encoding',
-      });
-    }
-
     // Exclude test files and non-JS files from being processed
     config.module.rules.push({
       test: /node_modules[\/\\]thread-stream[\/\\](test|bench\.js)/,
@@ -33,15 +24,25 @@ const nextConfig: NextConfig = {
       net: false,
       tls: false,
       crypto: false,
+      'pino-pretty': false,
     };
 
-    // Add polyfills for browser-only APIs in server-side builds
-    if (isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@react-native-async-storage/async-storage': false,
-      };
-    }
+    // Handle problematic modules that don't exist in web/server environments
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      // MetaMask SDK tries to import React Native modules - stub them
+      '@react-native-async-storage/async-storage': false,
+      // Pino logger optional dependencies
+      'pino-pretty': false,
+    };
+
+    // Ignore these modules entirely to prevent bundling issues
+    config.externals = [
+      ...(Array.isArray(config.externals) ? config.externals : config.externals ? [config.externals] : []),
+      'pino-pretty',
+      'encoding',
+      'lokijs',
+    ];
 
     return config;
   },

@@ -7,8 +7,7 @@ import {
     injectedWallet,
 } from '@rainbow-me/rainbowkit/wallets';
 import { bscTestnet, bsc} from 'wagmi/chains';
-import { http, createConfig } from 'wagmi';
-import { createStorage } from 'wagmi';
+import { http, createConfig, createStorage, noopStorage } from 'wagmi';
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
 
@@ -44,6 +43,6 @@ export const config = createConfig({
     },
     ssr: true,
     storage: createStorage({
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storage: typeof window !== 'undefined' ? window.localStorage : noopStorage,
     }),
 });
