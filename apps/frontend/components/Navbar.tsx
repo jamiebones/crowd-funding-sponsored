@@ -1,16 +1,26 @@
 'use client';
 
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield, BarChart3 } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
+import { LoginModal } from './auth/LoginModal';
+import { WalletButton } from './auth/WalletButton';
+import { useAuth } from '@/context/authContext';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const pathname = usePathname();
-  const { address } = useAccount();
+  const { address: wagmiAddress } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { isAuthenticated, walletAddress, walletMode, logout } = useAuth();
+
+  // Use wallet address from auth context (supports both Web3 and social login)
+  const address = walletAddress || wagmiAddress;
+
+
 
   const navigation = [
     { name: 'Explore', href: '/projects', icon: LayoutGrid },
@@ -85,15 +95,18 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Connect Button */}
+            {/* Connect Button / Login Button */}
             <div className="hidden md:block">
-              <ConnectButton 
-                showBalance={{
-                  smallScreen: false,
-                  largeScreen: true,
-                }}
-                chainStatus="icon"
-              />
+              {!isAuthenticated ? (
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  Login
+                </button>
+              ) : (
+                <WalletButton showBalance={true} chainStatus="icon" />
+              )}
             </div>
 
             {/* Stats Link */}
@@ -173,13 +186,21 @@ export function Navbar() {
               )}
 
               <div className="pt-3 border-t border-gray-200 dark:border-gray-800 mt-2">
-                <ConnectButton 
-                  showBalance={{
-                    smallScreen: true,
-                    largeScreen: true,
-                  }}
-                  chainStatus="full"
-                />
+                {!isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsLoginModalOpen(true);
+                    }}
+                    className="w-full px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  >
+                    Login
+                  </button>
+                ) : (
+                  <div onClick={() => setIsMenuOpen(false)}>
+                    <WalletButton showBalance={true} chainStatus="full" />
+                  </div>
+                )}
               </div>
 
               <Link
@@ -200,6 +221,12 @@ export function Navbar() {
           </div>
         )}
       </div>
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+      />
     </nav>
   );
 }

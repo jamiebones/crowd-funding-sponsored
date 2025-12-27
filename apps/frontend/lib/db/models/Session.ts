@@ -24,7 +24,6 @@ const SessionSchema = new Schema<ISession>(
         expiresAt: {
             type: Date,
             required: true,
-            index: true,
         },
     },
     {
@@ -38,3 +37,5 @@ SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const Session: Model<ISession> = mongoose.models.Session || mongoose.model<ISession>('Session', SessionSchema);
 
 export default Session;
+
+

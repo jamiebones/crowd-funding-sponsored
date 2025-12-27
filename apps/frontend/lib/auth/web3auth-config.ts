@@ -29,11 +29,16 @@ export const initWeb3Auth = async (): Promise<Web3Auth> => {
         );
     }
 
+    // Get network from env, default to mainnet
+    const network = process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === 'testnet'
+        ? WEB3AUTH_NETWORK.SAPPHIRE_DEVNET
+        : WEB3AUTH_NETWORK.SAPPHIRE_MAINNET;
+
     web3auth = new Web3Auth({
         clientId,
-        web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+        web3AuthNetwork: network,
         uiConfig: {
-            appName: 'CrowdFunding Platform',
+            appName: 'Magic World CrowdFunding Platform',
             theme: {
                 primary: '#3b82f6',
             },

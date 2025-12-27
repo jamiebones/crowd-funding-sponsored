@@ -1,10 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAccount } from 'wagmi';
 import { initWeb3Auth, getWeb3Auth, resetWeb3Auth } from '@/lib/auth/web3auth-config';
 import { setWalletMode, getWalletMode, getWalletAddress } from '@/lib/auth/wallet-provider';
 import type { WalletMode } from '@/lib/auth/wallet-provider';
-import type { IProvider } from '@web3auth/base';
+
 
 interface UserInfo {
   email?: string;
@@ -33,13 +34,14 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [walletMode, setWalletModeState] = useState<WalletMode>('web3');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize authentication state on mount
+  // Initialize authentication state on mount (runs once)
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -52,7 +54,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (web3auth.connected) {
             const address = await getWalletAddress();
             const info = await web3auth.getUserInfo() as any;
-            
             setIsAuthenticated(true);
             setWalletAddress(address);
             setUserInfo({
@@ -64,13 +65,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           }
         } else {
-          // Check if Web3 wallet is connected (via wagmi)
-          const address = await getWalletAddress();
-          if (address) {
-            setIsAuthenticated(true);
-            setWalletAddress(address);
+          // For web3 mode, check if there's an existing session
+          try {
+            const response = await fetch('/api/users/profile');
+            if (response.ok) {
+              const data = await response.json();
+              if (data.user) {
+                setWalletAddress(data.user.walletAddress);
+                setUserInfo({
+                  email: data.user.email,
+                  name: data.user.name,
+                  profileImage: data.user.profileImage,
+                  provider: data.user.provider,
+                });
+              }
+            }
+          } catch (err) {
+            // No existing session, that's fine
+            console.log('No existing session found');
           }
         }
+        // Note: Web3 wallet state is handled by the wagmi sync effect below
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
@@ -81,14 +96,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
+  // Sync with wagmi account changes (runs when wagmi connection state changes)
+  useEffect(() => {
+    if (wagmiConnected && wagmiAddress) {
+      // Web3 wallet connected - switch to web3 mode
+      setWalletMode('web3');
+      setWalletModeState('web3');
+      setIsAuthenticated(true);
+      setWalletAddress(wagmiAddress);
+      setUserInfo(null); // Web3 wallets don't have user info
+    } else if (!wagmiConnected && walletMode === 'web3') {
+      // Web3 wallet disconnected (only clear if in web3 mode)
+      setIsAuthenticated(false);
+      setWalletAddress(null);
+      setUserInfo(null);
+    }
+  }, [wagmiAddress, wagmiConnected, walletMode]);
+
   const loginWithSocial = async (provider?: string) => {
     try {
       setIsLoading(true);
       const web3auth = await initWeb3Auth();
-
       // Connect with Web3Auth
       const web3authProvider = await web3auth.connect();
-      
       if (!web3authProvider) {
         throw new Error('Failed to connect with Web3Auth');
       }
@@ -157,16 +187,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           await web3auth.logout();
         }
         resetWeb3Auth();
+        
+        // Clear backend session (only for social login)
+        await fetch('/api/auth/logout', { method: 'POST' });
       }
-      // For Web3 mode, disconnection is handled by RainbowKit/wagmi
+      // For Web3 mode, disconnection is handled by RainbowKit/wagmi (no backend session)
 
       // Clear state
       setIsAuthenticated(false);
       setWalletAddress(null);
       setUserInfo(null);
-      
-      // Clear session on backend
-      await fetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
