@@ -3,6 +3,11 @@ import { TurboFactory } from '@ardrive/turbo-sdk/node';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB total limit
 
+// Ensure private key has 0x prefix for Ethereum
+function normalizePrivateKey(key: string): string {
+    return key.startsWith('0x') ? key : `0x${key}`;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
@@ -43,8 +48,9 @@ export async function POST(request: NextRequest) {
             }
 
             // Use privateKey directly with TurboFactory for Ethereum wallets
+            const normalizedKey = normalizePrivateKey(privateKey);
             const turbo = TurboFactory.authenticated({
-                privateKey,
+                privateKey: normalizedKey,
                 token: 'ethereum'
             });
 
@@ -87,8 +93,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Use privateKey directly with TurboFactory for Ethereum wallets
+        const normalizedKey = normalizePrivateKey(privateKey);
         const turbo = TurboFactory.authenticated({
-            privateKey,
+            privateKey: normalizedKey,
             token: 'ethereum'
         });
 
