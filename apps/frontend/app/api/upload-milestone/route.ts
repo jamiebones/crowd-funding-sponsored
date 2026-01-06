@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TurboFactory } from '@ardrive/turbo-sdk';
-import { EthereumSigner } from '@ardrive/turbo-sdk/web';
+import { TurboFactory } from '@ardrive/turbo-sdk/node';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB total limit
 
@@ -43,9 +42,11 @@ export async function POST(request: NextRequest) {
                 );
             }
 
-            // Use EthereumSigner for Ethereum wallets
-            const signer = new EthereumSigner(privateKey);
-            const turbo = TurboFactory.authenticated({ signer } as any);
+            // Use privateKey directly with TurboFactory for Ethereum wallets
+            const turbo = TurboFactory.authenticated({
+                privateKey,
+                token: 'ethereum'
+            });
 
             for (const file of files) {
                 const buffer = await file.arrayBuffer();
@@ -85,8 +86,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const signer = new EthereumSigner(privateKey);
-        const turbo = TurboFactory.authenticated({ signer } as any);
+        // Use privateKey directly with TurboFactory for Ethereum wallets
+        const turbo = TurboFactory.authenticated({
+            privateKey,
+            token: 'ethereum'
+        });
 
         const contentBuffer = Buffer.from(JSON.stringify(milestoneContent));
         const contentUpload = await turbo.uploadFile({
