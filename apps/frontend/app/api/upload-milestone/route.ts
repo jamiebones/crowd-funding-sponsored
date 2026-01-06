@@ -3,15 +3,9 @@ import { TurboFactory, EthereumSigner } from '@ardrive/turbo-sdk/node';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB total limit
 
-// Convert hex string private key to Uint8Array (32 bytes)
-function hexToBytes(hex: string): Uint8Array {
-    // Remove 0x prefix if present
-    const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
-    const bytes = new Uint8Array(32);
-    for (let i = 0; i < 64; i += 2) {
-        bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
-    }
-    return bytes;
+// Ensure private key has 0x prefix for Ethereum
+function normalizePrivateKey(key: string): string {
+    return key.startsWith('0x') ? key : `0x${key}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -53,9 +47,9 @@ export async function POST(request: NextRequest) {
                 );
             }
 
-            // Use privateKey directly with TurboFactory for Ethereum wallets
-            const privateKeyBytes = hexToBytes(privateKey);
-            const signer = new EthereumSigner(privateKeyBytes as unknown as string);
+            // Use EthereumSigner with hex string for Ethereum wallets
+            const normalizedKey = normalizePrivateKey(privateKey);
+            const signer = new EthereumSigner(normalizedKey);
             const turbo = TurboFactory.authenticated({
                 signer,
                 token: 'ethereum'
@@ -99,9 +93,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Use privateKey directly with TurboFactory for Ethereum wallets
-        const privateKeyBytes = hexToBytes(privateKey);
-        const signer = new EthereumSigner(privateKeyBytes as unknown as string);
+        // Use EthereumSigner with hex string for Ethereum wallets
+        const normalizedKey = normalizePrivateKey(privateKey);
+        const signer = new EthereumSigner(normalizedKey);
         const turbo = TurboFactory.authenticated({
             signer,
             token: 'ethereum'
