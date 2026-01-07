@@ -166,6 +166,13 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
 
       setUploadProgress(80);
 
+      // Check content type to ensure we got JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+         const text = await response.text();
+         throw new Error(`Server returned non-JSON response (${response.status}): ${text.slice(0, 100)}...`);
+      }
+
       const result = await response.json();
 
       if (!response.ok) {
