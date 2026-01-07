@@ -17,6 +17,57 @@ const MAX_FILES_COUNT = process.env.NEXT_PUBLIC_MAX_FILES_COUNT
   ? parseInt(process.env.NEXT_PUBLIC_MAX_FILES_COUNT) 
   : 10; // Default: 10 files
 
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (safely under 4.5MB Vercel limit)
+
+// Generate unique upload ID
+function generateUploadId(): string {
+  return `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+// Split file into chunks
+function splitFileIntoChunks(file: File): Blob[] {
+  const chunks: Blob[] = [];
+  let offset = 0;
+  
+  while (offset < file.size) {
+    const chunk = file.slice(offset, offset + CHUNK_SIZE);
+    chunks.push(chunk);
+    offset += CHUNK_SIZE;
+  }
+  
+  return chunks;
+}
+
+// Upload a single chunk
+async function uploadChunk(
+  chunk: Blob,
+  uploadId: string,
+  chunkIndex: number,
+  totalChunks: number,
+  fileName: string,
+  fileType: string
+): Promise<{ success: boolean; receivedChunks: number }> {
+  const formData = new FormData();
+  formData.append('uploadId', uploadId);
+  formData.append('chunkIndex', chunkIndex.toString());
+  formData.append('totalChunks', totalChunks.toString());
+  formData.append('fileName', fileName);
+  formData.append('fileType', fileType);
+  formData.append('chunk', chunk);
+
+  const response = await fetch('/api/upload-chunk', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Chunk upload failed');
+  }
+
+  return response.json();
+}
+
 export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
@@ -124,7 +175,7 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
     handleFiles(e.dataTransfer.files);
   };
 
-  // Upload to Arweave
+  // Upload to Arweave using chunked upload
   const handleUpload = async () => {
     const newErrors: Record<string, string> = {};
 
@@ -144,27 +195,62 @@ export function StepTwo({ formData, updateFormData, onNext, onBack }: StepTwoPro
     }
 
     setUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(5);
 
     try {
-      // Prepare FormData
-      const formDataToSend = new FormData();
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('description', formData.description);
+      const uploadIds: Array<{ uploadId: string; fileName: string; fileType: string }> = [];
       
-      formData.files.forEach((file) => {
-        formDataToSend.append('files', file);
-      });
+      // Calculate total chunks for progress tracking
+      const totalChunksAllFiles = formData.files.reduce((acc, file) => {
+        return acc + Math.ceil(file.size / CHUNK_SIZE);
+      }, 0);
+      let completedChunks = 0;
 
-      setUploadProgress(30);
+      // Upload each file in chunks
+      for (const file of formData.files) {
+        const uploadId = generateUploadId();
+        const chunks = splitFileIntoChunks(file);
+        
+        // Upload chunks sequentially
+        for (let i = 0; i < chunks.length; i++) {
+          await uploadChunk(
+            chunks[i],
+            uploadId,
+            i,
+            chunks.length,
+            file.name,
+            file.type
+          );
+          
+          completedChunks++;
+          // Progress: 5% start, 5-80% for chunk uploads, 80-100% for finalization
+          const chunkProgress = 5 + (completedChunks / totalChunksAllFiles) * 75;
+          setUploadProgress(Math.round(chunkProgress));
+        }
+        
+        uploadIds.push({
+          uploadId,
+          fileName: file.name,
+          fileType: file.type
+        });
+      }
 
-      // Upload to API
-      const response = await fetch('/api/upload-campaign', {
+      setUploadProgress(85);
+
+      // Finalize: reassemble and upload to Arweave
+      const response = await fetch('/api/finalize-upload', {
         method: 'POST',
-        body: formDataToSend,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          uploadIds,
+        }),
       });
 
-      setUploadProgress(80);
+      setUploadProgress(95);
 
       // Check content type to ensure we got JSON
       const contentType = response.headers.get("content-type");

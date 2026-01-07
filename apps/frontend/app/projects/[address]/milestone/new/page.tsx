@@ -19,6 +19,13 @@ import {
   File,
 } from 'lucide-react';
 import CROWD_FUNDING_CONTRACT from '@/abis/CrowdFunding.json';
+import {
+  generateUploadId,
+  splitFileIntoChunks,
+  uploadChunk,
+  calculateTotalChunks,
+  CHUNK_SIZE,
+} from '@/lib/services/chunkUploadService';
 
 const CROWD_FUNDING_ABI = CROWD_FUNDING_CONTRACT.abi;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -38,6 +45,7 @@ export default function CreateMilestonePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [milestoneCID, setMilestoneCID] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -132,26 +140,106 @@ export default function CreateMilestonePage() {
 
     setIsUploading(true);
     setUploadError('');
+    setUploadProgress(5);
 
     try {
-      // Upload to Arweave via Turbo
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', description);
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
+      // Check if we should use chunked upload (for files > 3MB or multiple files totaling > 3MB)
+      const totalSize = files.reduce((acc, file) => acc + file.size, 0);
+      const shouldUseChunkedUpload = totalSize > 3 * 1024 * 1024 || files.some(f => f.size > 3 * 1024 * 1024);
 
-      const response = await fetch('/api/upload-milestone', {
-        method: 'POST',
-        body: formData,
-      });
+      let result;
 
-      const result = await response.json();
+      if (files.length > 0 && shouldUseChunkedUpload) {
+        // Use chunked upload for large files
+        const uploadIds: Array<{ uploadId: string; fileName: string; fileType: string }> = [];
+        
+        // Calculate total chunks for progress tracking
+        const totalChunks = calculateTotalChunks(files, CHUNK_SIZE);
+        let completedChunks = 0;
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload failed');
+        // Upload each file in chunks
+        for (const file of files) {
+          const uploadId = generateUploadId();
+          const chunks = splitFileIntoChunks(file, CHUNK_SIZE);
+          
+          // Upload chunks sequentially
+          for (let i = 0; i < chunks.length; i++) {
+            await uploadChunk(
+              chunks[i],
+              uploadId,
+              i,
+              chunks.length,
+              file.name,
+              file.type
+            );
+            
+            completedChunks++;
+            // Progress: 5% start, 5-80% for chunk uploads, 80-100% for finalization
+            const chunkProgress = 5 + (completedChunks / totalChunks) * 75;
+            setUploadProgress(Math.round(chunkProgress));
+          }
+          
+          uploadIds.push({
+            uploadId,
+            fileName: file.name,
+            fileType: file.type
+          });
+        }
+
+        setUploadProgress(85);
+
+        // Finalize: reassemble and upload to Arweave using JSON endpoint
+        const response = await fetch('/api/upload-milestone', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title,
+            description,
+            uploadIds,
+          }),
+        });
+
+        setUploadProgress(95);
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          throw new Error(`Server returned non-JSON response (${response.status}): ${text.slice(0, 100)}...`);
+        }
+
+        result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Upload failed');
+        }
+      } else {
+        // Use legacy FormData upload for small files (under 3MB total)
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+
+        setUploadProgress(50);
+
+        const response = await fetch('/api/upload-milestone', {
+          method: 'POST',
+          body: formData,
+        });
+
+        setUploadProgress(90);
+
+        result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Upload failed');
+        }
       }
+
+      setUploadProgress(100);
 
       // Store the CID for the transaction
       setMilestoneCID(result.milestoneCID);
@@ -168,6 +256,7 @@ export default function CreateMilestonePage() {
       setUploadError(error.message || 'Failed to upload milestone');
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -490,7 +579,7 @@ export default function CreateMilestonePage() {
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 {isUploading
-                  ? 'Uploading to Arweave...'
+                  ? `Uploading to Arweave... ${uploadProgress}%`
                   : isPending
                   ? 'Confirm in Wallet...'
                   : 'Creating Milestone...'}
@@ -502,6 +591,23 @@ export default function CreateMilestonePage() {
               </>
             )}
           </button>
+
+          {/* Upload Progress Bar */}
+          {isUploading && uploadProgress > 0 && (
+            <div className="mt-4">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
+                {uploadProgress < 80 ? 'Uploading files...' : 
+                 uploadProgress < 95 ? 'Processing on Arweave...' : 
+                 'Almost done...'}
+              </p>
+            </div>
+          )}
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
             By creating a milestone, you agree that the information provided is accurate
