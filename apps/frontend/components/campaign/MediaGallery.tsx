@@ -1,36 +1,50 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, FileText, Download, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
+
+type MediaType = 'image' | 'video' | 'document';
 
 interface MediaGalleryProps {
   media: string[];
   categoryIcon: string;
 }
 
-// Check if URL is a video based on content type or file extension
+// Check if URL is a video based on file extension
 function isVideoUrl(url: string): boolean {
-  // Check common video extensions
   const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m4v'];
   const lowerUrl = url.toLowerCase();
-  
-  // Check if URL ends with video extension
-  if (videoExtensions.some(ext => lowerUrl.includes(ext))) {
-    return true;
-  }
-  
-  return false;
+  return videoExtensions.some(ext => lowerUrl.includes(ext));
+}
+
+// Check if URL is a document based on file extension
+function isDocumentUrl(url: string): boolean {
+  const documentExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf', '.odt'];
+  const lowerUrl = url.toLowerCase();
+  return documentExtensions.some(ext => lowerUrl.includes(ext));
 }
 
 // Fetch content-type from URL to determine media type
-async function detectMediaType(url: string): Promise<'image' | 'video'> {
+async function detectMediaType(url: string): Promise<MediaType> {
   try {
     const response = await fetch(url, { method: 'HEAD' });
     const contentType = response.headers.get('content-type') || '';
     
     if (contentType.startsWith('video/')) {
       return 'video';
+    }
+    
+    if (
+      contentType.startsWith('application/pdf') ||
+      contentType.startsWith('application/msword') ||
+      contentType.startsWith('application/vnd.openxmlformats') ||
+      contentType.startsWith('application/vnd.ms-') ||
+      contentType.startsWith('text/plain') ||
+      contentType.startsWith('application/rtf') ||
+      contentType.startsWith('application/vnd.oasis.opendocument')
+    ) {
+      return 'document';
     }
   } catch (error) {
     console.error('Error detecting media type:', error);
@@ -39,9 +53,28 @@ async function detectMediaType(url: string): Promise<'image' | 'video'> {
   return 'image';
 }
 
+// Get document file name from URL or content-disposition
+function getFileName(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const parts = pathname.split('/');
+    const lastPart = parts[parts.length - 1];
+    
+    // If it looks like an Arweave hash (no extension), return generic name
+    if (!lastPart.includes('.')) {
+      return 'Document';
+    }
+    
+    return decodeURIComponent(lastPart);
+  } catch {
+    return 'Document';
+  }
+}
+
 export function MediaGallery({ media, categoryIcon }: MediaGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [mediaTypes, setMediaTypes] = useState<Record<number, 'image' | 'video'>>({});
+  const [mediaTypes, setMediaTypes] = useState<Record<number, MediaType>>({});
   const [isDetecting, setIsDetecting] = useState(true);
 
   const hasMedia = media && media.length > 0;
@@ -55,13 +88,15 @@ export function MediaGallery({ media, categoryIcon }: MediaGalleryProps) {
     }
 
     const detectAllTypes = async () => {
-      const types: Record<number, 'image' | 'video'> = {};
+      const types: Record<number, MediaType> = {};
       
       await Promise.all(
         displayMedia.map(async (url, index) => {
           // First check URL extension
           if (isVideoUrl(url)) {
             types[index] = 'video';
+          } else if (isDocumentUrl(url)) {
+            types[index] = 'document';
           } else {
             // Fetch content-type for Arweave URLs
             types[index] = await detectMediaType(url);
@@ -89,13 +124,13 @@ export function MediaGallery({ media, categoryIcon }: MediaGalleryProps) {
     setMediaTypes(prev => ({ ...prev, [index]: 'video' }));
   };
 
-  // Render media item (image or video)
+  // Render media item (image, video, or document)
   const renderMedia = (url: string, index: number, isThumbnail: boolean = false) => {
-    const isVideo = mediaTypes[index] === 'video';
+    const mediaType = mediaTypes[index] || 'image';
 
-    if (isVideo) {
+    // Video rendering
+    if (mediaType === 'video') {
       if (isThumbnail) {
-        // For thumbnails, show a play icon overlay
         return (
           <div className="relative w-full h-full bg-gray-800 flex items-center justify-center">
             <Play className="w-6 h-6 text-white" />
@@ -116,6 +151,81 @@ export function MediaGallery({ media, categoryIcon }: MediaGalleryProps) {
       );
     }
 
+    // Document rendering
+    if (mediaType === 'document') {
+      const fileName = getFileName(url);
+      const isPdf = url.toLowerCase().includes('.pdf') || fileName.toLowerCase().includes('.pdf');
+      
+      if (isThumbnail) {
+        return (
+          <div className="relative w-full h-full bg-gray-700 flex items-center justify-center">
+            <FileText className="w-6 h-6 text-white" />
+          </div>
+        );
+      }
+      
+      // For PDFs, show embedded viewer
+      if (isPdf) {
+        return (
+          <div className="absolute inset-0 w-full h-full bg-gray-100 dark:bg-gray-800">
+            <iframe
+              src={`${url}#view=FitH`}
+              className="w-full h-full"
+              title={fileName}
+            />
+            <div className="absolute bottom-4 right-4 flex gap-2 z-10">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open
+              </a>
+              <a
+                href={url}
+                download={fileName}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </a>
+            </div>
+          </div>
+        );
+      }
+      
+      // For other documents, show download card
+      return (
+        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex flex-col items-center justify-center p-8">
+          <FileText className="w-24 h-24 text-gray-400 mb-6" />
+          <p className="text-white text-xl font-semibold mb-2 text-center">{fileName}</p>
+          <p className="text-gray-400 text-sm mb-6">Document file</p>
+          <div className="flex gap-4">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Open in New Tab
+            </a>
+            <a
+              href={url}
+              download={fileName}
+              className="bg-gray-600 hover:bg-gray-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Download
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    // Image rendering (default)
     return (
       <Image
         src={url}
