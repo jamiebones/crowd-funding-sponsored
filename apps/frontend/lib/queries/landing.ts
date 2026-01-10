@@ -4,11 +4,14 @@ export const GET_PLATFORM_STATISTICS = gql`
   query GetPlatformStatistics {
     statistics(first: 1) {
       id
-      totalCampaigns
-      totalAmountRaised
+      totalContracts
       totalBackers
-      totalCampaignsEnded
-      totalCampaignsRunning
+      totalFundingRequest
+      totalWithdrawals
+    }
+    campaigns(first: 1000) {
+      id
+      amountRaised
     }
   }
 `;

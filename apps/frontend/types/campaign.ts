@@ -55,11 +55,11 @@ export interface Campaign {
 
 export interface Statistics {
   id: string;
-  totalCampaigns: number;
-  totalAmountRaised: string;
-  totalBackers: number;
-  totalCampaignsEnded: number;
-  totalCampaignsRunning: number;
+  totalContracts: string;
+  totalFundingGiven: string;
+  totalBackers: string;
+  totalFundingRequest: string;
+  totalWithdrawals: string;
 }
 
 export interface CampaignContent {

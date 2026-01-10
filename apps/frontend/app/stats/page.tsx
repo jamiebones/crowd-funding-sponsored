@@ -24,16 +24,22 @@ export default function StatsPage() {
   const stats = data?.statistics?.[0];
   const campaigns = data?.campaigns || [];
 
-  // Calculate totals from campaigns data (fallback if stats not available)
+  // Calculate totals from campaign data
+  // NOTE: Do NOT use stats.totalFundingGiven - it has a bug in the subgraph where it's 
+  // initialized to the first campaign's goal instead of 0, making it inaccurate.
+  // Always calculate from the sum of campaign.amountRaised values.
   const totalCampaigns = stats?.totalContracts ? Number(stats.totalContracts) : campaigns.length;
-  const totalFundsRaised = stats?.totalFundingGiven 
-    ? BigInt(stats.totalFundingGiven)
-    : campaigns.reduce((sum: bigint, c) => sum + BigInt(c.amountRaised || '0'), BigInt(0));
   
-  // Calculate unique backers
+  // Sum all campaign amountRaised values (actual funds in campaigns)
+  const totalFundsRaised = campaigns.reduce(
+    (sum: bigint, c) => sum + BigInt(c.amountRaised || '0'), 
+    BigInt(0)
+  );
+  
+  // Total backers from statistics entity
   const totalBackers = stats?.totalBackers 
     ? Number(stats.totalBackers)
-    : campaigns.reduce((sum: number, c) => sum + Number(c.backers || '0'), 0);
+    : 0;
 
   // Category color mapping
   const categoryColors: { [key: number]: string } = {

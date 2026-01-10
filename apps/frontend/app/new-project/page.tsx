@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { useSearchParams } from 'next/navigation';
 import { StepOne } from '@/components/create-campaign/StepOne';
 import { StepTwo } from '@/components/create-campaign/StepTwo';
 import { StepThree } from '@/components/create-campaign/StepThree';
 import { Success } from '@/components/create-campaign/Success';
-import { CheckCircle, Circle } from 'lucide-react';
+import { CheckCircle, Circle, Info } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export interface CampaignFormData {
@@ -23,11 +24,17 @@ export interface CampaignFormData {
   // Step 3
   arweaveTxId?: string;
   campaignAddress?: string;
+  
+  // Server wallet (if provided)
+  serverWallet?: string;
 }
 
 export default function CreateCampaignPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const serverWallet = searchParams.get('serverWallet');
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<CampaignFormData>({
     title: '',
@@ -36,6 +43,7 @@ export default function CreateCampaignPage() {
     duration: 30,
     description: '',
     files: [],
+    serverWallet: serverWallet || undefined,
   });
 
   const steps = [
@@ -65,8 +73,10 @@ export default function CreateCampaignPage() {
     setCurrentStep(4);
   };
 
-  // Redirect if wallet not connected
-  if (!isConnected) {
+  // Redirect if wallet not connected and no server wallet provided
+  const requiresWallet = !serverWallet;
+  
+  if (requiresWallet && !isConnected) {
     return (
       <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -104,6 +114,26 @@ export default function CreateCampaignPage() {
             Launch your project and start raising funds
           </p>
         </div>
+
+        {/* Server Wallet Banner */}
+        {serverWallet && (
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  Creating with Server Wallet
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 font-mono">
+                  {serverWallet}
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  This campaign will be created using a platform-managed wallet. No wallet connection required.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stepper */}
         {currentStep < 4 && (
