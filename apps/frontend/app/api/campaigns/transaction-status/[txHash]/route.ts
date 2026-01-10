@@ -7,22 +7,22 @@ import PendingTransaction from '@/lib/db/models/PendingTransaction';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { txHash: string } }
+  { params }: { params: Promise<{ txHash: string }> }
 ) {
   try {
     await connectDB();
-    
-    const { txHash } = params;
-    
+
+    const { txHash } = await params;
+
     const transaction = await PendingTransaction.findOne({ txHash }).lean();
-    
+
     if (!transaction) {
       return NextResponse.json(
         { success: false, error: 'Transaction not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
       transaction
