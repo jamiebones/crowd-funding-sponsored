@@ -4,7 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield, BarChart3 } from 'lucide-react';
+import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield, BarChart3, Gift } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
 export function Navbar() {
@@ -15,6 +15,7 @@ export function Navbar() {
   const navigation = [
     { name: 'Explore', href: '/projects', icon: LayoutGrid },
     { name: 'Create', href: '/new-project', icon: Rocket },
+    { name: 'Batch Donate', href: '/projects/batch-donate', icon: Gift, requiresAuth: true },
     { name: 'Dashboard', href: '/dashboard', icon: TrendingUp, requiresAuth: true },
   ];
 

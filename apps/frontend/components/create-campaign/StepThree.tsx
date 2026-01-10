@@ -15,7 +15,12 @@ interface StepThreeProps {
 
 export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
   const [error, setError] = useState<string>('');
+  const [serverTxHash, setServerTxHash] = useState<string>('');
+  const [isServerCreating, setIsServerCreating] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState(false);
   const chainId = useChainId();
+  
+  const isServerWallet = !!formData.serverWallet;
 
   // Read current platform fee from contract
   const { data: platformFee, isLoading: isFeeLoading } = useReadContract({
@@ -48,12 +53,18 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
         return;
       }
 
+      // Check if using server wallet
+      if (isServerWallet && formData.serverWallet) {
+        await handleServerWalletCreate();
+        return;
+      }
+
       if (!platformFee) {
         setError('Unable to read platform fee. Please try again.');
         return;
       }
 
-      // Call createNewCrowdFundingContract
+      // Call createNewCrowdFundingContract with user's wallet
       writeContract({
         address: FACTORY_ADDRESS,
         abi: FactoryABI.abi as Abi,
@@ -72,6 +83,101 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
       console.error('Transaction error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create campaign');
     }
+  };
+
+  const handleServerWalletCreate = async () => {
+    try {
+      setIsServerCreating(true);
+      
+      const response = await fetch('/api/campaigns/create-server-side', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: formData.serverWallet,
+          arweaveTxId: formData.arweaveTxId,
+          category: formData.category,
+          title: formData.title,
+          goal: formData.goal,
+          duration: formData.duration,
+          performedBy: 'ADMIN'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create campaign');
+      }
+
+      setServerTxHash(data.txHash);
+      
+      // Start polling for transaction status
+      pollTransactionStatus(data.txHash);
+
+    } catch (err) {
+      console.error('Server wallet creation error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create campaign with server wallet');
+      setIsServerCreating(false);
+    }
+  };
+
+  const pollTransactionStatus = async (txHash: string) => {
+    setPollingStatus(true);
+    let attempts = 0;
+    const maxAttempts = 60; // Poll for up to 2 minutes (60 * 2s = 120s)
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/campaigns/transaction-status/${txHash}`);
+        const data = await response.json();
+
+        if (data.success && data.transaction) {
+          const tx = data.transaction;
+
+          if (tx.status === 'CONFIRMED') {
+            // Success! Extract campaign address
+            const campaignAddress = tx.metadata?.campaignAddress;
+            if (campaignAddress && formData.arweaveTxId) {
+              setPollingStatus(false);
+              setIsServerCreating(false);
+              onSuccess(campaignAddress, formData.arweaveTxId);
+            } else {
+              setError('Campaign created but address not found');
+              setPollingStatus(false);
+              setIsServerCreating(false);
+            }
+            return;
+          } else if (tx.status === 'FAILED') {
+            setError(tx.errorMessage || 'Transaction failed');
+            setPollingStatus(false);
+            setIsServerCreating(false);
+            return;
+          }
+        }
+
+        // Continue polling if still pending
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 2000); // Poll every 2 seconds
+        } else {
+          setError('Transaction confirmation timeout. Please check transaction status manually.');
+          setPollingStatus(false);
+          setIsServerCreating(false);
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 2000);
+        } else {
+          setError('Failed to check transaction status');
+          setPollingStatus(false);
+          setIsServerCreating(false);
+        }
+      }
+    };
+
+    poll();
   };
 
   // Handle success - extract campaign address from logs
@@ -252,7 +358,7 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
       )}
 
       {/* Transaction Status */}
-      {isPending && (
+      {isPending && !isServerWallet && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 animate-spin text-yellow-600" />
@@ -268,7 +374,33 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
         </div>
       )}
 
-      {isConfirming && (
+      {isServerCreating && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {pollingStatus ? 'Waiting for blockchain confirmation...' : 'Creating campaign with server wallet...'}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {pollingStatus ? 'Transaction submitted, polling for confirmation...' : 'Signing and submitting transaction...'}
+              </p>
+              {serverTxHash && (
+                <a
+                  href={getBlockExplorerUrl(serverTxHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-1"
+                >
+                  View on BscScan <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isConfirming && !isServerWallet && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
@@ -313,7 +445,7 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
         <button
           type="button"
           onClick={onBack}
-          disabled={isPending || isConfirming}
+          disabled={isPending || isConfirming || isServerCreating}
           className="px-8 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ← Back
@@ -321,15 +453,15 @@ export function StepThree({ formData, onBack, onSuccess }: StepThreeProps) {
         <button
           type="button"
           onClick={handleCreate}
-          disabled={isPending || isConfirming || !formData.arweaveTxId || isFeeLoading || !platformFee}
+          disabled={isPending || isConfirming || isServerCreating || !formData.arweaveTxId || (isServerWallet ? false : (isFeeLoading || !platformFee))}
           className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          {isPending || isConfirming ? (
+          {isPending || isConfirming || isServerCreating ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Creating Campaign...
             </>
-          ) : isFeeLoading ? (
+          ) : isFeeLoading && !isServerWallet ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Loading Fee...

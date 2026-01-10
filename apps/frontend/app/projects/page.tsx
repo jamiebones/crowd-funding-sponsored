@@ -11,7 +11,7 @@ import { SearchAndSort } from '@/components/projects/SearchAndSort';
 import { Pagination } from '@/components/shared/Pagination';
 import { formatEther } from 'viem';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Gift } from 'lucide-react';
 import { CampaignCardSkeleton } from '@/components/LoadingSkeletons';
 import { fetchArweaveTitles } from '@/lib/fetchArweaveTitles';
 
@@ -186,13 +186,22 @@ export default function ProjectsPage() {
               Discover and support innovative projects
             </p>
           </div>
-          <Link
-            href="/new-project"
-            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Create Campaign
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href="/projects/batch-donate"
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-all shadow-md hover:shadow-lg"
+            >
+              <Gift className="w-5 h-5" />
+              Batch Donate
+            </Link>
+            <Link
+              href="/new-project"
+              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Create Campaign
+            </Link>
+          </div>
         </div>
 
         {/* Search and Sort */}

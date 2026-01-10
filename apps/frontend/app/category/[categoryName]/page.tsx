@@ -116,8 +116,10 @@ export default function CategoryPage() {
     const totalRaised = campaigns.reduce((sum: bigint, c: any) => {
       return sum + BigInt(c.amountRaised);
     }, BigInt(0));
+    // Note: This sums backers across campaigns, so the same person donating to 
+    // multiple campaigns is counted multiple times (total contributions, not unique backers)
     const totalBackers = campaigns.reduce((sum: number, c: any) => {
-      return sum + c.backers;
+      return sum + Number(c.backers);
     }, 0);
 
     return { totalCampaigns, activeCampaigns, totalRaised, totalBackers };
@@ -238,7 +240,7 @@ export default function CategoryPage() {
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Users className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Backers</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Contributions</p>
                   </div>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {stats.totalBackers}

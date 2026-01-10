@@ -96,7 +96,7 @@ export function handleNewCrowdFundingContractCreated(
         stats.totalContracts = BigInt.fromI32(1);
         stats.totalBackers = BigInt.fromI32(0);
         stats.totalFundingRequest = BigInt.fromI32(0);
-        stats.totalFundingGiven = event.params.goal;
+        stats.totalFundingGiven = BigInt.fromI32(0);
         stats.totalWithdrawals = BigInt.fromI32(0);
     } else {
         stats.totalContracts = stats.totalContracts.plus(BigInt.fromI32(1));
