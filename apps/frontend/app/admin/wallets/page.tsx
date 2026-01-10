@@ -151,8 +151,13 @@ export default function ServerWalletsPage() {
     }
   };
 
-  const deleteWallet = async (address: string) => {
-    if (!confirm(`Are you sure you want to remove wallet ${truncateAddress(address)}? This will deactivate the wallet permanently.`)) {
+  const deleteWallet = async (address: string, campaignCount: number) => {
+    if (campaignCount > 0) {
+      setError(`Cannot delete wallet with ${campaignCount} campaign(s) attached. Please reassign or complete campaigns first.`);
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to permanently delete wallet ${truncateAddress(address)}? This action cannot be undone.`)) {
       return;
     }
 
@@ -164,13 +169,13 @@ export default function ServerWalletsPage() {
       const data = await response.json();
       
       if (data.success) {
-        setSuccessMessage('Wallet removed successfully');
+        setSuccessMessage('Wallet deleted successfully');
         fetchWallets();
       } else {
-        setError('Failed to remove wallet');
+        setError(data.error || 'Failed to delete wallet');
       }
     } catch (err) {
-      setError('Error removing wallet');
+      setError('Error deleting wallet');
       console.error(err);
     }
   };
@@ -435,9 +440,14 @@ export default function ServerWalletsPage() {
                           )}
                         </button>
                         <button
-                          onClick={() => deleteWallet(wallet.address)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                          title="Remove Wallet"
+                          onClick={() => deleteWallet(wallet.address, wallet.campaignCount)}
+                          disabled={wallet.campaignCount > 0}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                            wallet.campaignCount > 0
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-red-600 text-white hover:bg-red-700'
+                          }`}
+                          title={wallet.campaignCount > 0 ? `Cannot delete wallet with ${wallet.campaignCount} campaign(s)` : 'Remove Wallet'}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />

@@ -120,7 +120,7 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/wallets/[address] - Deactivate wallet (soft delete)
+ * DELETE /api/wallets/[address] - Delete wallet (only if no campaigns attached)
  */
 export async function DELETE(
   request: NextRequest,
@@ -143,22 +143,31 @@ export async function DELETE(
       );
     }
 
-    wallet.isActive = false;
+    // Check if wallet has campaigns attached
+    if (wallet.campaignCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete wallet with ${wallet.campaignCount} campaign(s) attached. Please reassign or complete campaigns first.`
+        },
+        { status: 400 }
+      );
+    }
 
-    // Save wallet and create audit log in parallel
-    await Promise.all([
-      wallet.save(),
-      WalletAuditLog.create({
-        walletAddress: address,
-        action: 'DEACTIVATED',
-        metadata: { reason: 'Deleted via API' },
-        performedBy
-      })
-    ]);
+    // Create audit log before deleting
+    await WalletAuditLog.create({
+      walletAddress: address,
+      action: 'DELETED',
+      metadata: { reason: 'Deleted via API', campaignCount: wallet.campaignCount },
+      performedBy
+    });
+
+    // Actually delete the wallet from database
+    await ServerWallet.deleteOne({ address });
 
     return NextResponse.json({
       success: true,
-      message: 'Wallet deactivated successfully'
+      message: 'Wallet deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting wallet:', error);
