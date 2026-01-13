@@ -4,9 +4,10 @@ import ServerWallet from '@/lib/db/models/ServerWallet';
 import WalletAuditLog from '@/lib/db/models/WalletAuditLog';
 import PendingTransaction from '@/lib/db/models/PendingTransaction';
 import { createWalletFromEncryptedKey, waitForTransaction } from '@/lib/services/walletService';
-import { encodeFunctionData, parseEther } from 'viem';
+import { encodeFunctionData, parseEther, decodeEventLog } from 'viem';
 import FactoryABI from '@/abis/CrowdFundingFactory.json';
 import { FACTORY_ADDRESS } from '@/lib/constants';
+import { Abi } from 'viem';
 
 interface CreateCampaignRequest {
   walletAddress: string;
@@ -180,14 +181,39 @@ export async function POST(request: NextRequest) {
         let campaignAddress: string | null = null;
 
         if (receipt.logs && receipt.logs.length > 0) {
-          // Find NewCrowdFundingContractCreated event
-          const event = receipt.logs.find((log: any) =>
-            log.topics[0] === '0x...' // Event signature - you'll need to add this
-          );
+          // Find and decode NewCrowdFundingContractCreated event
+          const campaignCreatedLog = receipt.logs.find((log: any) => {
+            try {
+              const decoded = decodeEventLog({
+                abi: FactoryABI.abi as Abi,
+                data: log.data,
+                topics: log.topics,
+              });
+              return decoded.eventName === 'NewCrowdFundingContractCreated';
+            } catch {
+              return false;
+            }
+          });
 
-          if (event && event.topics[1]) {
-            campaignAddress = `0x${event.topics[1].slice(26)}`; // Extract address from indexed parameter
+          if (campaignCreatedLog) {
+            try {
+              const decoded = decodeEventLog({
+                abi: FactoryABI.abi as Abi,
+                data: campaignCreatedLog.data,
+                topics: campaignCreatedLog.topics,
+              });
+
+              // Extract contractAddress from decoded event args
+              campaignAddress = (decoded.args as any).contractAddress;
+              console.log('Extracted campaign address:', campaignAddress);
+            } catch (error) {
+              console.error('Failed to decode event:', error);
+            }
           }
+        }
+
+        if (!campaignAddress) {
+          console.error('Failed to extract campaign address from receipt');
         }
 
         // Increment campaign count

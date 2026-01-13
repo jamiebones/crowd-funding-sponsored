@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { createPublicClient, http, formatEther } from 'viem';
+import { bsc } from 'viem/chains';
 
 interface ServerWallet {
   _id: string;
@@ -15,6 +17,12 @@ interface WalletWithBalance extends ServerWallet {
   bnbBalance?: string;
   balanceLoading?: boolean;
 }
+
+// Create a public client for BSC
+const publicClient = createPublicClient({
+  chain: bsc,
+  transport: http(process.env.NEXT_PUBLIC_BSC_MAINNET_RPC),
+});
 
 export default function ServerWalletsPage() {
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
@@ -60,26 +68,19 @@ export default function ServerWalletsPage() {
 
   const fetchWalletBalance = async (address: string) => {
     try {
-      const response = await fetch(`https://api.bscscan.com/api?module=account&action=balance&address=${address}&tag=latest&apikey=YourApiKeyToken`);
-      const data = await response.json();
+      // Use viem to fetch balance directly from RPC
+      const balance = await publicClient.getBalance({
+        address: address as `0x${string}`,
+      });
       
-      if (data.status === '1') {
-        const balanceInBNB = (parseInt(data.result) / 1e18).toFixed(6);
-        setWallets(prev => prev.map(w => 
-          w.address === address 
-            ? { ...w, bnbBalance: balanceInBNB, balanceLoading: false }
-            : w
-        ));
-      } else {
-        // Fallback to RPC call if BSCScan fails
-        setWallets(prev => prev.map(w => 
-          w.address === address 
-            ? { ...w, bnbBalance: '0.000000', balanceLoading: false }
-            : w
-        ));
-      }
+      const balanceInBNB = formatEther(balance);
+      setWallets(prev => prev.map(w => 
+        w.address === address 
+          ? { ...w, bnbBalance: parseFloat(balanceInBNB).toFixed(6), balanceLoading: false }
+          : w
+      ));
     } catch (err) {
-      console.error('Error fetching balance:', err);
+      console.error('Error fetching balance for', address, ':', err);
       setWallets(prev => prev.map(w => 
         w.address === address 
           ? { ...w, bnbBalance: 'Error', balanceLoading: false }
