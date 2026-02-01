@@ -32,3 +32,7 @@ export function useCampaignOwner({ campaignAddress, userAddress }: UseCampaignOw
     return {
         isOwner,
         contractOwner,
+        isLoading,
+        isError,
+    };
+}
