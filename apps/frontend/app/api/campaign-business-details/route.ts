@@ -91,11 +91,18 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        console.log('[POST /api/campaign-business-details] Request body:', {
+            campaignAddress: body.campaignAddress,
+            ownerAddress: body.ownerAddress,
+        });
+
         // Verify the user is the campaign owner
         const isOwner = await verifyCampaignOwner(
             body.campaignAddress,
             body.ownerAddress
         );
+
+        console.log('[POST /api/campaign-business-details] Ownership verification result:', isOwner);
 
         if (!isOwner) {
             return NextResponse.json(

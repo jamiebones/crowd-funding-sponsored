@@ -18,6 +18,11 @@ export async function verifyCampaignOwner(
     userAddress: string
 ): Promise<boolean> {
     try {
+        console.log('[verifyCampaignOwner] Input:', {
+            campaignAddress,
+            userAddress,
+        });
+
         // Read campaign details from the contract
         // getFundingDetails returns (owner, duration, targetAmount)
         const result = await publicClient.readContract({
@@ -27,11 +32,19 @@ export async function verifyCampaignOwner(
         }) as [Address, bigint, bigint];
 
         const owner = result[0];
+        
+        console.log('[verifyCampaignOwner] Contract owner:', owner);
+        console.log('[verifyCampaignOwner] User address:', userAddress);
+        console.log('[verifyCampaignOwner] Comparison:', {
+            ownerLower: owner.toLowerCase(),
+            userLower: userAddress.toLowerCase(),
+            match: owner.toLowerCase() === userAddress.toLowerCase()
+        });
 
         // Compare addresses (case-insensitive)
         return owner.toLowerCase() === userAddress.toLowerCase();
     } catch (error) {
-        console.error('Error verifying campaign owner:', error);
+        console.error('[verifyCampaignOwner] Error:', error);
         return false;
     }
 }
