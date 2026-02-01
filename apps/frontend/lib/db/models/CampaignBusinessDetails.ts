@@ -433,7 +433,7 @@ const CampaignBusinessDetailsSchema = new Schema<ICampaignBusinessDetails>(
 );
 
 // Indexes for efficient queries
-CampaignBusinessDetailsSchema.index({ campaignAddress: 1 }, { unique: true });
+// Note: campaignAddress already has unique: true in schema, no need to add index here
 CampaignBusinessDetailsSchema.index({ ownerAddress: 1 });
 CampaignBusinessDetailsSchema.index({ urgent: 1, rank: 1 });
 CampaignBusinessDetailsSchema.index({ createdAt: -1 });

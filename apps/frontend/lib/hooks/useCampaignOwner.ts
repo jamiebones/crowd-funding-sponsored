@@ -13,23 +13,22 @@ interface UseCampaignOwnerParams {
  * @returns Object with isOwner status and loading state
  */
 export function useCampaignOwner({ campaignAddress, userAddress }: UseCampaignOwnerParams) {
-    const { data: contractOwner, isLoading, isError } = useReadContract({
-        address: campaignAddress as `0x${string}`,
-        abi: CROWD_FUNDING_ABI.abi,
-        functionName: 'getCampaignOwner',
-        query: {
-            enabled: !!campaignAddress && !!userAddress,
-        },
-    });
+  // getFundingDetails returns [owner, duration, targetAmount]
+  const { data: fundingDetails, isLoading, isError } = useReadContract({
+    address: campaignAddress as `0x${string}`,
+    abi: CROWD_FUNDING_ABI.abi,
+    functionName: 'getFundingDetails',
+    query: {
+      enabled: !!campaignAddress && !!userAddress,
+    },
+  });
 
-    const isOwner = contractOwner && userAddress
-        ? (contractOwner as string).toLowerCase() === userAddress.toLowerCase()
-        : false;
+  const contractOwner = fundingDetails ? (fundingDetails as [string, bigint, bigint])[0] : undefined;
+  
+  const isOwner = contractOwner && userAddress
+    ? contractOwner.toLowerCase() === userAddress.toLowerCase()
+    : false;
 
-    return {
-        isOwner,
-        contractOwner: contractOwner as string | undefined,
-        isLoading,
-        isError,
-    };
-}
+  return {
+    isOwner,
+    contractOwner,
