@@ -10,6 +10,7 @@ import { MediaGallery } from '@/components/campaign/MediaGallery';
 import { FundingProgress } from '@/components/campaign/FundingProgress';
 import { MilestoneTimeline } from '@/components/campaign/MilestoneTimeline';
 import { RecentDonations } from '@/components/campaign/RecentDonations';
+import { BusinessDetailsDisplay } from '@/components/campaign/BusinessDetailsDisplay';
 import { CATEGORIES } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
@@ -165,6 +166,9 @@ export default function CampaignDetailPage() {
                 </p>
               )}
             </div>
+
+            {/* Business Plan Details */}
+            <BusinessDetailsDisplay campaignAddress={address} />
 
             {/* Milestone Timeline */}
             <MilestoneTimeline campaign={campaign} />
