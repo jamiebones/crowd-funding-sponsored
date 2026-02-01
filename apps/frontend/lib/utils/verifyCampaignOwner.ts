@@ -1,15 +1,18 @@
-import { createPublicClient, http, Address } from 'viem';
-import { bscTestnet } from 'viem/chains';
-import CROWD_FUNDING_ABI from '@/abis/CrowdFunding.json';
+import { apolloClient } from '@/lib/apollo';
+import { GET_CAMPAIGN_OWNER } from '@/lib/queries/campaign-owner';
 
-const publicClient = createPublicClient({
-    chain: bscTestnet,
-    transport: http(),
-});
+interface CampaignOwnerData {
+    campaign: {
+        id: string;
+        owner: {
+            id: string;
+        };
+    } | null;
+}
 
 /**
  * Verify if an address is the owner of a campaign contract
- * Uses subgraph to get owner information instead of direct contract calls
+ * Uses subgraph to get owner information through Apollo Client
  * @param campaignAddress - The campaign contract address
  * @param userAddress - The user's wallet address to verify
  * @returns Promise<boolean> - True if user is the owner
@@ -24,39 +27,13 @@ export async function verifyCampaignOwner(
             userAddress,
         });
 
-        // Query the subgraph for campaign owner
-        const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL || 'https://api.studio.thegraph.com/query/90963/crowd-funding/version/latest';
-
-        const query = `
-            query GetCampaignOwner($id: ID!) {
-                campaign(id: $id) {
-                    id
-                    owner {
-                        id
-                    }
-                }
-            }
-        `;
-
-        const response = await fetch(SUBGRAPH_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+        const result = await apolloClient.query<CampaignOwnerData>({
+            query: GET_CAMPAIGN_OWNER,
+            variables: {
+                id: campaignAddress.toLowerCase(),
             },
-            body: JSON.stringify({
-                query,
-                variables: {
-                    id: campaignAddress.toLowerCase(),
-                },
-            }),
+            fetchPolicy: 'network-only',
         });
-
-        const result = await response.json();
-
-        if (result.errors) {
-            console.error('[verifyCampaignOwner] GraphQL errors:', result.errors);
-            return false;
-        }
 
         if (!result.data?.campaign) {
             console.error('[verifyCampaignOwner] Campaign not found in subgraph');
@@ -76,6 +53,10 @@ export async function verifyCampaignOwner(
         // Compare addresses (case-insensitive)
         return owner.toLowerCase() === userAddress.toLowerCase();
     } catch (error) {
+        if (error && typeof error === 'object' && 'graphQLErrors' in error) {
+            const gqlError = error as { graphQLErrors?: Array<unknown> };
+            console.error('[verifyCampaignOwner] GraphQL errors:', gqlError.graphQLErrors);
+        }
         console.error('[verifyCampaignOwner] Error:', error);
         return false;
     }
@@ -83,7 +64,7 @@ export async function verifyCampaignOwner(
 
 /**
  * Get the owner address of a campaign
- * Uses subgraph to get owner information
+ * Uses Apollo Client to query the subgraph
  * @param campaignAddress - The campaign contract address
  * @returns Promise<string | null> - Owner address or null if error
  */
@@ -91,34 +72,15 @@ export async function getCampaignOwner(
     campaignAddress: string
 ): Promise<string | null> {
     try {
-        const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL || 'https://api.studio.thegraph.com/query/90963/crowd-funding/version/latest';
-
-        const query = `
-            query GetCampaignOwner($id: ID!) {
-                campaign(id: $id) {
-                    owner {
-                        id
-                    }
-                }
-            }
-        `;
-
-        const response = await fetch(SUBGRAPH_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+        const result = await apolloClient.query<CampaignOwnerData>({
+            query: GET_CAMPAIGN_OWNER,
+            variables: {
+                id: campaignAddress.toLowerCase(),
             },
-            body: JSON.stringify({
-                query,
-                variables: {
-                    id: campaignAddress.toLowerCase(),
-                },
-            }),
+            fetchPolicy: 'network-only',
         });
 
-        const result = await response.json();
-
-        if (result.errors || !result.data?.campaign) {
+        if (!result.data?.campaign) {
             return null;
         }
 
