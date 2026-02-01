@@ -125,8 +125,8 @@ export function BusinessDetailsDisplay({ campaignAddress }: BusinessDetailsDispl
                     throw new Error('Failed to load business details');
                 }
                 
-                const data = await response.json();
-                setDetails(data);
+                const result = await response.json();
+                setDetails(result.data);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An error occurred');
             } finally {
