@@ -4,7 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield, BarChart3, Gift } from 'lucide-react';
+import { Menu, X, Rocket, LayoutGrid, TrendingUp, User, Shield, BarChart3, Gift, Briefcase } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
 export function Navbar() {
@@ -15,6 +15,7 @@ export function Navbar() {
   const navigation = [
     { name: 'Explore', href: '/projects', icon: LayoutGrid },
     { name: 'Create', href: '/new-project', icon: Rocket },
+    { name: 'Business Plan', href: '/business-details', icon: Briefcase, requiresAuth: true },
     { name: 'Batch Donate', href: '/projects/batch-donate', icon: Gift, requiresAuth: true },
     { name: 'Dashboard', href: '/dashboard', icon: TrendingUp, requiresAuth: true },
   ];
@@ -23,12 +24,12 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto pl-0 pr-4 sm:pr-6 lg:pr-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link 
             href="/" 
-            className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors ml-4"
           >
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
               <Rocket className="w-5 h-5 text-white" />
@@ -48,7 +49,7 @@ export function Navbar() {
                   key={item.name}
                   href={item.href}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors
+                    flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium transition-colors
                     ${isActive(item.href)
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -68,7 +69,7 @@ export function Navbar() {
             {address && (
               <Link
                 href={`/user/${address}`}
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="hidden md:flex items-center gap-2 px-2 py-1.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 title="My Profile"
               >
                 <User className="w-4 h-4" />
@@ -79,7 +80,7 @@ export function Navbar() {
             {address && (
               <Link
                 href="/admin"
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="hidden md:flex items-center gap-2 px-2 py-1.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 title="Admin Dashboard"
               >
                 <Shield className="w-4 h-4" />
@@ -101,7 +102,7 @@ export function Navbar() {
             <Link
               href="/stats"
               className={`
-                hidden md:flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors
+                hidden md:flex items-center gap-2 px-2 py-1.5 rounded-lg font-medium transition-colors
                 ${isActive('/stats')
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'

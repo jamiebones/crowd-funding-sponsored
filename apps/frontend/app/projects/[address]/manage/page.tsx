@@ -22,6 +22,7 @@ import {
   Settings,
   AlertCircle,
   ExternalLink,
+  Briefcase,
 } from 'lucide-react';
 import { CATEGORIES, MILESTONE_STATUS } from '@/lib/constants';
 import { filterActiveDonations } from '@/lib/filterActiveDonations';
@@ -587,6 +588,25 @@ export default function CampaignManagePage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Business Plan Section - Always Available */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Business Plan
+              </h2>
+              
+              <Link
+                href={`/business-details?campaign=${contractAddress}`}
+                className="w-full flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors justify-center"
+              >
+                <Briefcase className="w-4 h-4" />
+                Edit Business Plan
+              </Link>
+              
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+                Add or update your campaign&apos;s detailed business plan to provide more information to potential backers.
+              </p>
             </div>
 
             {/* Campaign Actions */}
