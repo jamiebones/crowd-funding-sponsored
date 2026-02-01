@@ -9,6 +9,7 @@ const publicClient = createPublicClient({
 
 /**
  * Verify if an address is the owner of a campaign contract
+ * Uses subgraph to get owner information instead of direct contract calls
  * @param campaignAddress - The campaign contract address
  * @param userAddress - The user's wallet address to verify
  * @returns Promise<boolean> - True if user is the owner
@@ -23,17 +24,48 @@ export async function verifyCampaignOwner(
             userAddress,
         });
 
-        // Read campaign details from the contract
-        // getFundingDetails returns (owner, duration, targetAmount)
-        const result = await publicClient.readContract({
-            address: campaignAddress as Address,
-            abi: CROWD_FUNDING_ABI.abi,
-            functionName: 'getFundingDetails',
-        }) as [Address, bigint, bigint];
+        // Query the subgraph for campaign owner
+        const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL || 'https://api.studio.thegraph.com/query/90963/crowd-funding/version/latest';
 
-        const owner = result[0];
-        
-        console.log('[verifyCampaignOwner] Contract owner:', owner);
+        const query = `
+            query GetCampaignOwner($id: ID!) {
+                campaign(id: $id) {
+                    id
+                    owner {
+                        id
+                    }
+                }
+            }
+        `;
+
+        const response = await fetch(SUBGRAPH_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query,
+                variables: {
+                    id: campaignAddress.toLowerCase(),
+                },
+            }),
+        });
+
+        const result = await response.json();
+
+        if (result.errors) {
+            console.error('[verifyCampaignOwner] GraphQL errors:', result.errors);
+            return false;
+        }
+
+        if (!result.data?.campaign) {
+            console.error('[verifyCampaignOwner] Campaign not found in subgraph');
+            return false;
+        }
+
+        const owner = result.data.campaign.owner.id;
+
+        console.log('[verifyCampaignOwner] Subgraph owner:', owner);
         console.log('[verifyCampaignOwner] User address:', userAddress);
         console.log('[verifyCampaignOwner] Comparison:', {
             ownerLower: owner.toLowerCase(),
@@ -51,6 +83,7 @@ export async function verifyCampaignOwner(
 
 /**
  * Get the owner address of a campaign
+ * Uses subgraph to get owner information
  * @param campaignAddress - The campaign contract address
  * @returns Promise<string | null> - Owner address or null if error
  */
@@ -58,14 +91,38 @@ export async function getCampaignOwner(
     campaignAddress: string
 ): Promise<string | null> {
     try {
-        // getFundingDetails returns (owner, duration, targetAmount)
-        const result = await publicClient.readContract({
-            address: campaignAddress as Address,
-            abi: CROWD_FUNDING_ABI.abi,
-            functionName: 'getFundingDetails',
-        }) as [Address, bigint, bigint];
+        const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL || 'https://api.studio.thegraph.com/query/90963/crowd-funding/version/latest';
 
-        return result[0];
+        const query = `
+            query GetCampaignOwner($id: ID!) {
+                campaign(id: $id) {
+                    owner {
+                        id
+                    }
+                }
+            }
+        `;
+
+        const response = await fetch(SUBGRAPH_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query,
+                variables: {
+                    id: campaignAddress.toLowerCase(),
+                },
+            }),
+        });
+
+        const result = await response.json();
+
+        if (result.errors || !result.data?.campaign) {
+            return null;
+        }
+
+        return result.data.campaign.owner.id;
     } catch (error) {
         console.error('Error getting campaign owner:', error);
         return null;
